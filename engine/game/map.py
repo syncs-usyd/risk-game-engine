@@ -1,93 +1,25 @@
-import random
 
-class Territory:
-    def __init__(self,
-                 territory_name,
-                 continent,
-                 owner,
-                 num_troops):
-        self.TERRITORY_NAME = territory_name
-        self.CONTINENT      = continent
-        self.OWNER          = owner
-        self.NUM_TROOPS     = num_troops
 
-def init_map(players):
-    # Randomly allocate players territories
-    territories = [i for i in range(NUM_TERRITORIES)]
-    random.shuffle(territories)
+class Map():
 
-    for i, territory in enumerate(territories):
-        players[i % 5] = 
+    def __init__(self, vertices, edges, continents, continent_bonuses):
+        self._vertices: dict[str, int] = vertices
+        self._vertex_names: dict[int, str] = dict([(y, x) for x, y in vertices.items()])
+        self._continents: dict[int, list[int]] = continents
+        self._continent_bonuses: dict[int, int] = continent_bonuses
+        self._edges: dict[int, list[int]] = edges
 
-    # Yellow Continent
-    ALASKA                = Territory("Alaska", "Yellow")
-    NORTHWEST_TERRITORY   = Territory("Northwest Territory", "Yellow")
-    ALBERTA               = Territory("Alberta", "Yellow")
-    GREENLAND             = Territory("Greenland", "Yellow")
-    ONTARIO               = Territory("Ontario", "Yellow")
-    QUEBEC                = Territory("Quebec", "Yellow")
-    WESTERN_UNITED_STATES = Territory("Western United States", "Yellow")
-    EASTERN_UNITED_STATES = Territory("Eastern United States", "Yellow")
-    CENTRAL_AMERICA       = Territory("Central America", "Yellow")
+    def get_vertices(self):
+        return self._vertices.values()
+    
+    def get_vertex_name(self, v: int):
+        return self._vertex_names[v]
 
-    # Choose list/set
-    return {
-        ALASKA: 
-            (
-                NORTHWEST_TERRITORY,
-                ALBERTA,
-            ),
-        NORTHWEST_TERRITORY:
-            (
-                ALASKA,
-                ALBERTA,
-                GREENLAND,
-                ONTARIO
-            ),
-        ALBERTA:
-            [
-                ALASKA,
-                NORTHWEST_TERRITORY,
-                ONTARIO,
-                WESTERN_UNITED_STATES
-            ],
-        GREENLAND:
-            [
-                NORTHWEST_TERRITORY,
-                ONTARIO,
-                QUEBEC
-            ],
-        ONTARIO:
-            [
-                NORTHWEST_TERRITORY,
-                ALBERTA,
-                QUEBEC,
-                GREENLAND,
-                WESTERN_UNITED_STATES,
-                EASTERN_UNITED_STATES
-            ],
-        QUEBEC:
-            [
-                GREENLAND,
-                ONTARIO,
-                EASTERN_UNITED_STATES
-            ],
-        WESTERN_UNITED_STATES:
-            [
-                ALBERTA,
-                ONTARIO,
-                EASTERN_UNITED_STATES,
-                CENTRAL_AMERICA
-            ],
-        EASTERN_UNITED_STATES:
-            [
-                ONTARIO,
-                QUEBEC,
-                CENTRAL_AMERICA
-            ],
-        CENTRAL_AMERICA:
-            [
-                WESTERN_UNITED_STATES,
-                EASTERN_UNITED_STATES
-            ]
-    }
+    def get_continents(self):
+        return self._continents
+
+    def get_adjacent_to(self, v: int):
+        return self._edges[v]
+    
+    def is_adjacent(self, v1: int, v2: int):
+        return v2 in self._edges[v1]
