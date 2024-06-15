@@ -1,7 +1,7 @@
 
 
 from typing import final
-from models.player.player_private_model import PlayerPrivateModel
+from engine.models.player.player_private_model import PlayerPrivateModel
 
 
 @final

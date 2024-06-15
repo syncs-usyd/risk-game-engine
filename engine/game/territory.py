@@ -1,6 +1,6 @@
 from typing import final
 
-from models.territory_model import TerritoryModel
+from engine.models.territory_model import TerritoryModel
 
 
 @final

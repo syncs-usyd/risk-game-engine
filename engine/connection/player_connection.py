@@ -9,10 +9,10 @@ from pydantic import ValidationError
 from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, EngineException, InvalidResponseException, TimeoutException
 from engine.game.state import State
-from queries.query_claim_territory import QueryClaimTerritory
-from queries.query_place_initial_troop import QueryPlaceInitialTroop
-from responses.response_claim_territory import ResponseClaimTerritory
-from responses.response_place_initial_troop import ResponsePlaceInitialTroop
+from engine.queries.query_claim_territory import QueryClaimTerritory
+from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
+from engine.responses.response_claim_territory import ResponseClaimTerritory
+from engine.responses.response_place_initial_troop import ResponsePlaceInitialTroop
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -91,8 +91,8 @@ class PlayerConnection():
 
     @time_limited("You didn't open 'to_engine' for writing or 'from_engine.pipe' for reading in time.")
     def _open_pipes(self):
-        self._to_engine_pipe: TextIOWrapper = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/to_engine.pipe", "r")
-        self._from_engine_pipe: TextIOWrapper = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/from_engine.pipe", "w")
+        self._to_engine_pipe = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/to_engine.pipe", "r")
+        self._from_engine_pipe = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/from_engine.pipe", "w")
 
 
     def _send(self, data: str):

@@ -1,9 +1,9 @@
 from typing import Iterable, Literal
 from pydantic import BaseModel
 
-from models.player.player_private_model import PlayerPrivateModel
-from models.player.player_public_model import PlayerPublicModel
-from models.territory_model import TerritoryModel
+from engine.models.player.player_private_model import PlayerPrivateModel
+from engine.models.player.player_public_model import PlayerPublicModel
+from engine.models.territory_model import TerritoryModel
 
 
 class QueryClaimTerritory(BaseModel):
