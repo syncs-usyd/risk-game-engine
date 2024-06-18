@@ -11,8 +11,14 @@ from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, E
 from engine.game.state import State
 from engine.queries.query_claim_territory import QueryClaimTerritory
 from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
+from engine.queries.query_place_player_troop import QueryPlacePlayerTroop
+from engine.queries.query_redeem_card_decision import QueryRedeemCardDecision
+from engine.queries.query_redeem_player_cards import QueryRedeemPlayerCards
 from engine.responses.response_claim_territory import ResponseClaimTerritory
 from engine.responses.response_place_initial_troop import ResponsePlaceInitialTroop
+from engine.responses.response_redeem_card_decision import ResponseRedeemCardDecision
+from engine.responses.response_place_player_troop import ResponsePlacePlayerTroop
+from engine.responses.response_redeem_player_cards import ResponseRedeemPlayerCards
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -144,6 +150,35 @@ class PlayerConnection():
         response = self._receive()
         return ResponsePlaceInitialTroop.model_validate_json(response, context={"state": state, "player": self.player_id})
         
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def query_place_player_troop(self, state: State) -> ResponsePlacePlayerTroop:
+        data = QueryPlacePlayerTroop(territories=state.territories.values(), players=state.players.values())
+        self._send(data.model_dump_json())
+        
+        response = self._receive()
+        return ResponsePlacePlayerTroop.model_validate_json(response, context={"state": state, "player": self.player_id})    
+    
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def query_redeem_card_decision(self, state: State) -> ResponseRedeemCardDecision:
+        data = QueryRedeemCardDecision(territories=state.territories.values(), players=state.players.values())
+        self._send(data.model_dump_json())
+        
+        response = self._receive()
+        return ResponseRedeemCardDecision.model_validate_json(response, context={"state": state, "player": self.player_id})
+    
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def query_redeem_player_cards(self, state: State) -> ResponseRedeemPlayerCards:
+        data = QueryRedeemPlayerCards(territories=state.territories.values(), players=state.players.values())
+        self._send(data.model_dump_json())
+
+        response = self._receive()
+        return ResponseRedeemPlayerCards.model_validate_json(response, context={"state": state, "player": self.player_id})
 
 if __name__ == "__main__":
     state = State()
