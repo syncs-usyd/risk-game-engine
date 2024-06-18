@@ -14,11 +14,13 @@ from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
 from engine.queries.query_place_player_troop import QueryPlacePlayerTroop
 from engine.queries.query_redeem_card_decision import QueryRedeemCardDecision
 from engine.queries.query_redeem_player_cards import QueryRedeemPlayerCards
+from engine.queries.query_fortify_territory import QueryFortifyTerritory
 from engine.responses.response_claim_territory import ResponseClaimTerritory
 from engine.responses.response_place_initial_troop import ResponsePlaceInitialTroop
 from engine.responses.response_redeem_card_decision import ResponseRedeemCardDecision
 from engine.responses.response_place_player_troop import ResponsePlacePlayerTroop
 from engine.responses.response_redeem_player_cards import ResponseRedeemPlayerCards
+from engine.responses.response_fortity_territory import ResponseFortifyTerritory
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -179,6 +181,16 @@ class PlayerConnection():
 
         response = self._receive()
         return ResponseRedeemPlayerCards.model_validate_json(response, context={"state": state, "player": self.player_id})
+    
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def query_fortify_territory(self, state: State) -> ResponseFortifyTerritory:
+        data = QueryFortifyTerritory(territories=state.territories.values(), players=state.players.values())
+        self._send(data.model_dump_json())
+
+        response = self._receive()
+        return ResponseFortifyTerritory.model_validate_json(response, context={"state": state, "player": self.player_id})
 
 if __name__ == "__main__":
     state = State()

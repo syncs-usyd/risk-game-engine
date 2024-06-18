@@ -324,3 +324,6 @@ def create_map():
     }
 
     return Map(vertices=vertices, edges=edges, continents=continents, continent_bonuses=continent_bonuses)
+
+
+def get_adjacent_vertices()

@@ -99,6 +99,21 @@ class GameEngine:
             selected_territory.troops += 1
             player.troops -= 1
 
+    def _player_fortify_phase(self, player: Player, connection: PlayerConnection):
+        if player.troops == 0:
+            return
+        
+        response = connection.query_fortify_territory(self.state)
+
+        # player moves <troops> number of troops from <source_territory_id> to <target_territory_id
+        source_territory = self.state.territories[response.source_territory_id]
+        target_territory = self.state.territories[response.target_territory_id]
+        troops = response.troops
+
+        source_territory.troops -= troops
+        target_territory.troops += troops
+
+
     def _run_game(self):
 
         self._start_claim_territories_phase()
@@ -118,7 +133,7 @@ class GameEngine:
             # ...
 
             # Fortification phase.
-            # ...
+            self._player_fortify_phase(player, connection)
 
         # Game ended.
         winner = filter(lambda x: x.alive == True, self.state.players.values()).__next__().player_id
