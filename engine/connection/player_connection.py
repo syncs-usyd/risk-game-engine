@@ -11,8 +11,10 @@ from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, E
 from engine.game.state import State
 from engine.queries.query_claim_territory import QueryClaimTerritory
 from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
+from engine.queries.query_attack_territory import QueryAttackTerritory
 from engine.responses.response_claim_territory import ResponseClaimTerritory
 from engine.responses.response_place_initial_troop import ResponsePlaceInitialTroop
+from engine.responses.response_attack_territory import ResponseAttackTerritory
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -143,7 +145,26 @@ class PlayerConnection():
         
         response = self._receive()
         return ResponsePlaceInitialTroop.model_validate_json(response, context={"state": state, "player": self.player_id})
-        
+
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def query_attack_territory(self, state: State) -> ResponseAttackTerritory:
+        data = QueryAttackTerritory(territories=state.territories.values(), players=state.players.values())
+        self._send(data.model_dump_json())
+
+        response = self._receive()
+        return ResponseAttackTerritory.model_validate_json(response, context={"state": state, "player": self.player_id})
+
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def query_defend_territory(self, territory, num_troops) -> ResponseDefendTerritory:
+        data = QueryDefendTerritory(territory=territory, num_troops=num_troops)
+        self._send(data.model_dump_json())
+
+        response = self._receive()
+        return ResponseAttackTerritory.model_validate_json(response, context={"state": state, "player": self.player_id})
 
 if __name__ == "__main__":
     state = State()
