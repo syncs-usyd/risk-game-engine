@@ -11,16 +11,18 @@ from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, E
 from engine.game.state import State
 from engine.queries.query_claim_territory import QueryClaimTerritory
 from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
+from engine.queries.query_attack_territory import QueryAttackTerritory
 from engine.queries.query_place_player_troop import QueryPlacePlayerTroop
 from engine.queries.query_redeem_card_decision import QueryRedeemCardDecision
 from engine.queries.query_redeem_player_cards import QueryRedeemPlayerCards
 from engine.queries.query_fortify_territory import QueryFortifyTerritory
-from engine.responses.response_claim_territory import ResponseClaimTerritory
-from engine.responses.response_place_initial_troop import ResponsePlaceInitialTroop
-from engine.responses.response_redeem_card_decision import ResponseRedeemCardDecision
-from engine.responses.response_place_player_troop import ResponsePlacePlayerTroop
-from engine.responses.response_redeem_player_cards import ResponseRedeemPlayerCards
-from engine.responses.response_fortity_territory import ResponseFortifyTerritory
+from engine.records.response_claim_territory import ResponseClaimTerritory
+from engine.records.response_place_initial_troop import ResponsePlaceInitialTroop
+from engine.records.response_redeem_card_decision import ResponseRedeemCardDecision
+from engine.records.response_place_player_troop import ResponsePlacePlayerTroop
+from engine.records.response_redeem_player_cards import ResponseRedeemPlayerCards
+from engine.records.response_fortity_territory import ResponseFortifyTerritory
+from engine.records.response_attack_territory import ResponseAttackTerritory
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -136,7 +138,7 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
-    def _query_response(self, query: BaseModel, response: Type[T], state: State) -> T:
+    def _query_move(self, query: BaseModel, response: Type[T], state: State) -> T:
         self._send(query.model_dump_json())
 
         _response = self._receive()
@@ -145,32 +147,42 @@ class PlayerConnection():
 
     def query_claim_territory(self, state: State) -> ResponseClaimTerritory:
         data = QueryClaimTerritory(territories=state.territories.values(), players=state.players.values())
-        return self._query_response(data, ResponseClaimTerritory, state)
+        return self._query_move(data, ResponseClaimTerritory, state)
 
 
     def query_place_initial_troop(self, state: State) -> ResponsePlaceInitialTroop:
         data = QueryPlaceInitialTroop(territories=state.territories.values(), players=state.players.values())
-        return self._query_response(data, ResponsePlaceInitialTroop, state)
+        return self._query_move(data, ResponsePlaceInitialTroop, state)
+
+
+    def query_attack_territory(self, state: State) -> ResponseAttackTerritory:
+        data = QueryAttackTerritory(territories=state.territories.values(), players=state.players.values())
+        return self._query_move(data, ResponseAttackTerritory, state)
+
+
+    # def query_defend_territory(self, territory, num_troops) -> ResponseDefendTerritory:
+    #     data = QueryDefendTerritory(territory=territory, num_troops=num_troops)
+    #     return self._query_response(data, ResponseDefendTerritory, state)
         
 
     def query_place_player_troop(self, state: State) -> ResponsePlacePlayerTroop:
         data = QueryPlacePlayerTroop(territories=state.territories.values(), players=state.players.values())
-        return self._query_response(data, ResponsePlacePlayerTroop, state) 
+        return self._query_move(data, ResponsePlacePlayerTroop, state) 
     
 
     def query_redeem_card_decision(self, state: State) -> ResponseRedeemCardDecision:
         data = QueryRedeemCardDecision(territories=state.territories.values(), players=state.players.values())
-        return self._query_response(data, ResponseRedeemCardDecision, state) 
+        return self._query_move(data, ResponseRedeemCardDecision, state) 
     
 
     def query_redeem_player_cards(self, state: State) -> ResponseRedeemPlayerCards:
         data = QueryRedeemPlayerCards(territories=state.territories.values(), players=state.players.values())
-        return self._query_response(data, ResponseRedeemPlayerCards, state) 
+        return self._query_move(data, ResponseRedeemPlayerCards, state) 
     
 
     def query_fortify_territory(self, state: State) -> ResponseFortifyTerritory:
         data = QueryFortifyTerritory(territories=state.territories.values(), players=state.players.values())
-        return self._query_response(data, ResponseFortifyTerritory, state) 
+        return self._query_move(data, ResponseFortifyTerritory, state) 
 
 
 if __name__ == "__main__":

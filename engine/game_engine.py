@@ -7,6 +7,7 @@ from engine.connection.player_connection import PlayerConnection
 from engine.exceptions import EngineException
 from engine.game.player import Player
 from engine.game.state import State
+from engine.game.attackhelper import AttackHelper
 
 def get_next_turn(state: State, connections: dict[int, PlayerConnection], turn_order: deque[int]) -> Tuple[Player, PlayerConnection]:
         player_id = turn_order.pop()
@@ -113,6 +114,29 @@ class GameEngine:
         source_territory.troops -= troops
         target_territory.troops += troops
 
+
+    def _attack_phase(self, player, connection):
+
+        while (True):
+            if not AttackHelper.can_player_attack(player, self.state):
+                break
+            response = connection.query_attack_territory(self.state)
+            if response.is_finished:
+                break
+
+            opponent_response = self.connections[response.opponent_id].query_defend_territory(response.target_territory, response.num_troops)
+            roll = AttackHelper.roll(response.num_troops, opponent_response.num_troops)
+            for result in roll:
+                if result:
+                    # subtract from opponent
+                    self.state.territories[response.opponent_id]
+                else:
+                    # subtract from player
+                    player.t
+            
+            if response.target_territory.troops == 0:
+                query_conquered
+            
 
     def _run_game(self):
 
