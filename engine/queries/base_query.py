@@ -13,7 +13,7 @@ from engine.records.record_drew_card import RecordDrewCard
 from engine.records.record_player_eliminated import RecordPlayerEliminated
 from engine.records.record_redeemed_cards import RecordRedeemedCards
 from engine.records.record_shuffled_cards import RecordShuffledCards
-from engine.records.record_start_game import RecordStartGame
+from engine.records.record_turn_order import RecordTurnOrder
 from engine.records.record_start_turn import RecordStartTurn
 from engine.records.record_territory_conquered import RecordTerritoryConquered
 
@@ -22,7 +22,7 @@ class BaseQuery(BaseModel):
     query_type: str
     you: PlayerPrivateModel
     update: dict[int, Union[RecordAttack, RecordDrewCard, RecordPlayerEliminated,
-                            RecordRedeemedCards, RecordShuffledCards, RecordStartGame, 
+                            RecordRedeemedCards, RecordShuffledCards, RecordTurnOrder, 
                             RecordStartTurn, RecordTerritoryConquered, MoveAttack, 
                             MoveClaimTerritory, MoveDefend, MoveFortify, 
                             MovePlaceInitialTroop, MoveRedeemCards]] = Field(discriminator="record_type")

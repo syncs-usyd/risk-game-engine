@@ -1,7 +1,12 @@
-from pydantic import BaseModel, ValidationInfo, model_validator
+from typing import Literal, final
+from pydantic import ValidationInfo, model_validator
 
+from engine.game.state import State
+from engine.records.base_move import BaseMove
 
-class MoveDefend(BaseModel):
+@final
+class MoveDefend(BaseMove):
+    record_type: Literal["move_defend"] = "move_defend"
     territory_id: int
     num_troops: int
 
@@ -15,3 +20,9 @@ class MoveDefend(BaseModel):
             raise ValueError(f"You tried to defend with more troops then you had occupying the defending territory.")
         
         return self
+
+    def get_public_record(self):
+        return self
+
+    def commit(self, state: State) -> None:
+        raise NotImplementedError

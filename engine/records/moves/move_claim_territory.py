@@ -1,7 +1,12 @@
-from pydantic import BaseModel, ValidationInfo, field_validator
+from typing import Literal, final
+from pydantic import ValidationInfo, field_validator
 
+from engine.game.state import State
+from engine.records.base_move import BaseMove
 
-class MoveClaimTerritory(BaseModel):
+@final
+class MoveClaimTerritory(BaseMove):
+    record_type: Literal["move_claim_territory"] = "move_claim_territory"
     territory_id: int
 
     @field_validator("territory_id")
@@ -16,3 +21,15 @@ class MoveClaimTerritory(BaseModel):
             raise ValueError(f"You tried to claim a territory that is already claimed.")  
         
         return v
+
+    def get_public_record(self):
+        return self
+
+    def commit(self, state: State) -> None:
+        player = state.players[self.move_by_player]
+        
+        claimed_territory = state.territories[self.territory_id]
+        claimed_territory.occupier = self.move_by_player
+        claimed_territory.troops = 1
+        player.troops_remaining -= 1
+        

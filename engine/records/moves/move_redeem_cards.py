@@ -1,10 +1,13 @@
-from typing import List, Tuple
-from pydantic import BaseModel, ValidationInfo, field_validator
+from typing import Literal, Tuple, final
+from pydantic import ValidationInfo, field_validator
 
 from engine.game.card import Card
 from engine.game.state import State
+from engine.records.base_move import BaseMove
 
-class MoveRedeemCards(BaseModel):
+@final
+class MoveRedeemCards(BaseMove):
+    record_type: Literal["move_redeem_cards"] = "move_redeem_cards"
     sets: list[Tuple[int, int, int]]
 
     @field_validator("sets")
@@ -41,3 +44,9 @@ class MoveRedeemCards(BaseModel):
         check_no_duplicates(all_cards) 
         
         return sets
+
+    def get_public_record(self):
+        return self
+
+    def commit(self, state: State) -> None:
+        raise NotImplementedError

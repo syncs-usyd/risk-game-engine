@@ -27,8 +27,6 @@ class GameEngine:
         random.shuffle(turn_order)
         self.turn_order = deque(turn_order)
 
-        # TODO: Add game log.
-
 
     def start(self):
         try:
@@ -44,12 +42,8 @@ class GameEngine:
         while len(list(filter(lambda x: x.occupier == None, self.state.territories.values()))) > 0:
             player, connection = get_next_turn(self.state, self.connections, turn_order)
             response = connection.query_claim_territory(self.state)
+            response.commit(self.state)
 
-            # The player claims this territory and places one troop there.
-            claimed_territory = self.state.territories[response.territory_id]
-            claimed_territory.occupier = player.player_id
-            claimed_territory.troops = 1
-            player.troops_remaining -= 1
 
 
     def _start_place_initial_troops_phase(self):
@@ -71,11 +65,11 @@ class GameEngine:
     def _player_troop_phase(self, player: Player, connection: PlayerConnection):
         # Player can redeem cards.
         if len(list(player.get_cards())) > 5:
-            response_cards = connection.query_redeem_player_cards(self.state)
+            response_cards = connection.query_redeem_cards(self.state)
         else:
             response_decision = connection.query_redeem_card_decision(self.state)
             if response_decision:
-                response_cards = connection.query_redeem_player_cards(self.state)
+                response_cards = connection.query_redeem_cards(self.state)
                 # Redeem cards. TODO: Write the code for this later. gaming break
                 # player.troops = add bonus troops from redeemed cards.
                 # remove cards from player
@@ -93,7 +87,7 @@ class GameEngine:
 
         # Player can place troops on territories they own.
         while player.troops_remaining != 0:
-            response = connection.query_place_player_troop(self.state)
+            response = connection.query_distribute_troops(self.state)
 
             # The player increases the troop count of this territory depending on how many troops they want to place.
             selected_territory = self.state.territories[response.territory_id]
@@ -104,7 +98,7 @@ class GameEngine:
         if player.troops_remaining == 0:
             return
         
-        response = connection.query_fortify_territory(self.state)
+        response = connection.query_fortify(self.state)
 
         # player moves <troops> number of troops from <source_territory_id> to <target_territory_id
         source_territory = self.state.territories[response.source_territory_id]
@@ -124,7 +118,7 @@ class GameEngine:
             if response.is_finished:
                 break
 
-            opponent_response = self.connections[response.opponent_id].query_defend_territory(response.target_territory, response.num_troops)
+            opponent_response = self.connections[response.opponent_id].query_defend(response.target_territory, response.num_troops)
             roll = AttackHelper.roll(response.num_troops, opponent_response.num_troops)
             for result in roll:
                 if result:

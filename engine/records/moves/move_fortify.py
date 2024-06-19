@@ -1,8 +1,12 @@
-from typing import Any
-from pydantic import BaseModel, ValidationInfo, field_validator, model_validator
+from typing import Literal, final
+from pydantic import ValidationInfo, model_validator
 
+from engine.game.state import State
+from engine.records.base_move import BaseMove
 
-class MoveFortify(BaseModel):
+@final
+class MoveFortify(BaseMove):
+    record_type: Literal["move_fortify"] = "move_fortify"
     source_territory: int
     target_territory: int
     troop_count: int
@@ -31,6 +35,14 @@ class MoveFortify(BaseModel):
             raise ValueError(f"You tried to move {self.troop_count} troops, you must move between zero and the number of troops in the source territory, subtracting one troop which must be left behind.")
         
         return self
+
+    def get_public_record(self):
+        return self
+
+    def commit(self, state: State) -> None:
+        raise NotImplementedError
+
+    
 
 
 

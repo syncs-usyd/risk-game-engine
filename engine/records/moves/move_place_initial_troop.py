@@ -1,7 +1,12 @@
-from pydantic import BaseModel, ValidationInfo, field_validator
+from typing import Literal, final
+from pydantic import ValidationInfo, field_validator
 
+from engine.game.state import State
+from engine.records.base_move import BaseMove
 
-class MovePlaceInitialTroop(BaseModel):
+@final
+class MovePlaceInitialTroop(BaseMove):
+    record_type: Literal["move_place_initial_troop"] = "move_place_initial_troop"
     territory_id: int
 
     @field_validator("territory_id")
@@ -17,3 +22,9 @@ class MovePlaceInitialTroop(BaseModel):
             raise ValueError(f"You don't occupy this territory.")  
         
         return v
+    
+    def get_public_record(self):
+        return self
+
+    def commit(self, state: State) -> None:
+        raise NotImplementedError

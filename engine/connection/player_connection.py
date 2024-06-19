@@ -1,5 +1,6 @@
 from io import TextIOWrapper
 import math
+import random
 from signal import SIGALRM, alarm, signal
 from time import time
 from typing import Callable, ParamSpec, Type, TypeVar, final
@@ -10,27 +11,29 @@ from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, M
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, EngineException, InvalidResponseException, TimeoutException
 from engine.game.state import State
 from engine.queries.query_claim_territory import QueryClaimTerritory
+from engine.queries.query_defend import QueryDefend
 from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
 from engine.queries.query_attack import QueryAttack
 from engine.queries.query_distribute_troops import QueryDistributeTroops
-from engine.queries.query_redeem_card_decision import QueryRedeemCardDecision
 from engine.queries.query_redeem_cards import QueryRedeemCards
 from engine.queries.query_fortify import QueryFortifyTerritory
-from engine.records.response_claim_territory import ResponseClaimTerritory
-from engine.records.response_place_initial_troop import ResponsePlaceInitialTroop
-from engine.records.response_redeem_card_decision import ResponseRedeemCardDecision
-from engine.records.response_place_player_troop import ResponsePlacePlayerTroop
-from engine.records.response_redeem_player_cards import ResponseRedeemPlayerCards
-from engine.records.response_fortity_territory import ResponseFortifyTerritory
-from engine.records.response_attack_territory import ResponseAttackTerritory
+from engine.records.moves.move_claim_territory import MoveClaimTerritory
+from engine.records.moves.move_claim_territory import MoveClaimTerritory
+from engine.records.moves.move_defend import MoveDefend
+from engine.records.moves.move_place_initial_troop import MovePlaceInitialTroop
+from engine.records.moves.move_distribute_troops import MoveDistributeTroops
+from engine.records.moves.move_redeem_cards import MoveRedeemCards
+from engine.records.moves.move_fortify import MoveFortify
+from engine.records.moves.move_attack import MoveAttack
+from engine.records.record_turn_order import RecordTurnOrder
 
 P = ParamSpec("P")
-T = TypeVar("T")
-def handle_sigpipe(fn: Callable[P, T]) -> Callable[P, T]:
+T1 = TypeVar("T1")
+def handle_sigpipe(fn: Callable[P, T1]) -> Callable[P, T1]:
     """Decorator to trigger ban if the player closes the from_engine pipe.
     """
 
-    def dfn(*args: P.args, **kwargs: P.kwargs) -> T:
+    def dfn(*args: P.args, **kwargs: P.kwargs) -> T1:
         self: 'PlayerConnection' = args[0] # type: ignore
         try:
             result = fn(*args, **kwargs)
@@ -42,11 +45,11 @@ def handle_sigpipe(fn: Callable[P, T]) -> Callable[P, T]:
     return dfn
 
 
-def handle_invalid(fn: Callable[P, T]) -> Callable[P, T]:
+def handle_invalid(fn: Callable[P, T1]) -> Callable[P, T1]:
     """Decorator to trigger ban if the player sends an invalid, but syntactically correct message.
     """
 
-    def dfn(*args: P.args, **kwargs: P.kwargs) -> T:
+    def dfn(*args: P.args, **kwargs: P.kwargs) -> T1:
         self: 'PlayerConnection' = args[0] # type: ignore
         try:
             result = fn(*args, **kwargs)
@@ -62,8 +65,8 @@ def time_limited(error_message: str = "You took too long to respond."):
     """Decorator to trigger ban if the player takes too long to respond.
     """
 
-    def dfn1(fn: Callable[P, T]):
-        def dfn2(*args: P.args, **kwargs: P.kwargs) -> T:
+    def dfn1(fn: Callable[P, T1]):
+        def dfn2(*args: P.args, **kwargs: P.kwargs) -> T1:
             self: 'PlayerConnection' = args[0]  # type: ignore
             def on_timeout_alarm(*_):
                 raise TimeoutException(self.player_id, error_message)
@@ -88,15 +91,16 @@ def time_limited(error_message: str = "You took too long to respond."):
     return dfn1
 
 
-T = TypeVar("T", bound=BaseModel)
+T2 = TypeVar("T2", bound=BaseModel)
 @final
 class PlayerConnection():
 
     def __init__(self, player_id: int):
-        self.player_id = player_id
+        self.player_id: int = player_id
         self._to_engine_pipe: TextIOWrapper
         self._from_engine_pipe: TextIOWrapper
         self._cumulative_time: float = 0
+        self._record_update_watermark: int = 0
 
         self._open_pipes()
 
@@ -138,58 +142,66 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
-    def _query_move(self, query: BaseModel, response: Type[T], state: State) -> T:
+    def _query_move(self, query: BaseModel, response: Type[T2], state: State) -> T2:
         self._send(query.model_dump_json())
 
         _response = self._receive()
         return response.model_validate_json(_response, context={"state": state, "player": self.player_id})
 
+    def _get_record_update_dict(self, state: State):
+        if self._record_update_watermark >= len(state.match_history):
+            raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
+        result = dict([(i, x) for i, x in enumerate(state.match_history[self._record_update_watermark:])])
+        self._record_update_watermark = len(state.match_history)
+        return result
 
-    def query_claim_territory(self, state: State) -> ResponseClaimTerritory:
-        data = QueryClaimTerritory(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponseClaimTerritory, state)
-
-
-    def query_place_initial_troop(self, state: State) -> ResponsePlaceInitialTroop:
-        data = QueryPlaceInitialTroop(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponsePlaceInitialTroop, state)
-
-
-    def query_attack_territory(self, state: State) -> ResponseAttackTerritory:
-        data = QueryAttack(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponseAttackTerritory, state)
+    def query_claim_territory(self, state: State) -> MoveClaimTerritory:
+        data = QueryClaimTerritory(you=state.players[self.player_id], update=self._get_record_update_dict(state)))
+        return self._query_move(data, MoveClaimTerritory, state)
 
 
-    # def query_defend_territory(self, territory, num_troops) -> ResponseDefendTerritory:
-    #     data = QueryDefendTerritory(territory=territory, num_troops=num_troops)
-    #     return self._query_response(data, ResponseDefendTerritory, state)
+    def query_place_initial_troop(self, state: State) -> MovePlaceInitialTroop:
+        data = QueryPlaceInitialTroop(you=state.players[self.player_id], update=self._get_record_update_dict(state))
+        return self._query_move(data, MovePlaceInitialTroop, state)
+
+
+    def query_attack(self, state: State) -> MoveAttack:
+        data = QueryAttack(you=state.players[self.player_id], update=self._get_record_update_dict(state))
+        return self._query_move(data, MoveAttack, state)
+
+
+    def query_defend(self, state: State) -> MoveDefend:
+        data = QueryDefend(you=state.players[self.player_id], update=self._get_record_update_dict(state))
+        return self._query_move(data, MoveDefend, state)
         
 
-    def query_place_player_troop(self, state: State) -> ResponsePlacePlayerTroop:
-        data = QueryDistributeTroops(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponsePlacePlayerTroop, state) 
+    def query_distribute_troops(self, state: State) -> MoveDistributeTroops:
+        data = QueryDistributeTroops(you=state.players[self.player_id], update=self._get_record_update_dict(state))
+        return self._query_move(data, MoveDistributeTroops, state) 
     
 
-    def query_redeem_card_decision(self, state: State) -> ResponseRedeemCardDecision:
-        data = QueryRedeemCardDecision(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponseRedeemCardDecision, state) 
+    def query_redeem_cards(self, state: State) -> MoveRedeemCards:
+        data = QueryRedeemCards(you=state.players[self.player_id], update=self._get_record_update_dict(state))
+        return self._query_move(data, MoveRedeemCards, state) 
     
 
-    def query_redeem_player_cards(self, state: State) -> ResponseRedeemPlayerCards:
-        data = QueryRedeemCards(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponseRedeemPlayerCards, state) 
-    
-
-    def query_fortify_territory(self, state: State) -> ResponseFortifyTerritory:
-        data = QueryFortifyTerritory(territories=state.territories.values(), players=state.players.values())
-        return self._query_move(data, ResponseFortifyTerritory, state) 
+    def query_fortify(self, state: State) -> MoveFortify:
+        data = QueryFortifyTerritory(you=state.players[self.player_id], update=self._get_record_update_dict(state))
+        return self._query_move(data, MoveFortify, state) 
 
 
 if __name__ == "__main__":
     state = State()
     connection = PlayerConnection(player_id=0)
 
+    turn_order = [x for x in range(5)]
+    random.shuffle(turn_order)
+    record_turn_order = RecordTurnOrder(turn_order=turn_order)
+    record_turn_order.commit(state)
+
     try:
-        connection.query_claim_territory(state)
+        response = connection.query_claim_territory(state)
+        response.commit(state)
+        print(state.territories)
     except EngineException as e:
         raise e
