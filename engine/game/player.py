@@ -1,15 +1,16 @@
 
 
 from typing import final
-from engine.models.player.player_private_model import PlayerPrivateModel
+
+from engine.models.player.player_model import PlayerModel
 
 
 @final
-class Player(PlayerPrivateModel):
+class Player(PlayerModel):
 
     @classmethod
     def factory(cls, player_id: int, initial_troops: int) -> 'Player':
-        return cls(player_id=player_id, troops_remaining=initial_troops, alive=True, cards=[], cards_held=0)
+        return cls(player_id=player_id, troops_remaining=initial_troops, alive=True, cards=[], must_place_territory_bonus=[])
     
     def get_cards(self):
         return self.cards

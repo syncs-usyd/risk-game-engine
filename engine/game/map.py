@@ -17,6 +17,9 @@ class Map():
 
     def get_continents(self):
         return self._continents
+    
+    def get_continent_bonus(self, continent: int) -> int:
+        return self._continent_bonuses[continent]
 
     def get_adjacent_to(self, v: int):
         return self._edges[v]

@@ -16,8 +16,7 @@ class RecordPlayerEliminated(BaseRecord):
         return PublicRecordPlayerEliminated(attack_record=self.attack_record, cards_surrendered_count=len(self.cards_surrendered))
 
     def commit(self, state: State) -> None:
-        raise NotImplementedError
-
+        state.match_history.append(self)
 
 
 class PublicRecordPlayerEliminated(BaseModel):

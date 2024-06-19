@@ -12,4 +12,4 @@ class RecordTerritoryConquered(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        raise NotImplementedError
+        state.match_history.append(self)

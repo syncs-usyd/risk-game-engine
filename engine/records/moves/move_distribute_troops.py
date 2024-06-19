@@ -12,18 +12,26 @@ class MoveDistributeTroops(BaseMove):
     @field_validator("distributions")
     @classmethod
     def _check_troop_distributions(cls, distributions: dict[int, int], info: ValidationInfo):
-        state = info.context["state"] # type: ignore
+        state: State = info.context["state"] # type: ignore
         player = info.context["player"] # type: ignore
 
         for territory in distributions:
             if not territory in state.territories:
-                raise ValueError(f"You tried to claim a nonexistant territory with id {territory}.")
+                raise ValueError(f"You tried to distribute troops to a nonexistant territory with id {territory}.")
             
             if state.territories[territory].occupier != player:
-                raise ValueError("You don't occupy this territory.")  
+                raise ValueError(f"You don't occupy the territory with id {territory}.")  
             
         if sum(distributions.values()) != player.troops:
             raise ValueError(f"You must distribute exactly your remaining {player.troops} troops.")
+        
+        matching_territories = state.players[player].must_place_territory_bonus
+        if len(matching_territories) > 0:
+            for territory in matching_territories:
+                if distributions[territory] >= 2:
+                    break
+            else:
+                raise ValueError(f"You must distribute your matching territory bonus to a matching territory from your previous card redemption, at least 2 troops must be placed on a matching territory.\n Your matching territories are {matching_territories}.")
             
         return distributions
 
@@ -31,6 +39,19 @@ class MoveDistributeTroops(BaseMove):
         return self
 
     def commit(self, state: State) -> None:
+
+        player = state.players[self.move_by_player]
+
+        # The player must have placed all their troops.
+        player.troops_remaining = 0
+
+        # Reset the matching territories.
+        player.must_place_territory_bonus = []
+
+        # Distribute the troops.
+        for territory, troops in self.distributions.items():
+            state.territories[territory].troops += troops
+
         raise NotImplementedError
 
         

@@ -20,19 +20,20 @@ if TYPE_CHECKING:
     from engine.records.record_shuffled_cards import RecordShuffledCards
     from engine.records.record_start_turn import RecordStartTurn
     from engine.records.record_territory_conquered import RecordTerritoryConquered
-    from engine.records.record_turn_order import RecordTurnOrder
+    from engine.records.record_start_game import RecordStartGame
 
 class State():
     def __init__(self):
         self.map: Map = earth.create_map()
         self.cards: dict[int, Card] = earth.create_cards() 
         self.deck: list[Card] = list(self.cards.values())
+        self.discarded_deck: list[Card] = []
         self.players: dict[int, Player] = dict([(x, Player.factory(player_id=x, initial_troops=NUM_STARTING_TROOPS)) for x in range(NUM_PLAYERS)])
         self.territories: dict[int, Territory] = dict([(x, Territory(territory_id=x, occupier=None, troops=0)) for x in self.map.get_vertices()])
         self.card_sets_redeemed: int = 0
         self.turn_order: list[int] = [x.player_id for x in self.players.values()]
         self.match_history: list[Union['RecordAttack', 'RecordDrewCard', 'RecordPlayerEliminated',
-                            'RecordRedeemedCards', 'RecordShuffledCards', 'RecordTurnOrder', 
+                            'RecordRedeemedCards', 'RecordShuffledCards', 'RecordStartGame', 
                             'RecordStartTurn', 'RecordTerritoryConquered', 'MoveAttack', 
                             'MoveClaimTerritory', 'MoveDefend', 'MoveFortify', 
                             'MovePlaceInitialTroop', 'MoveRedeemCards']] = []

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ValidationError
 
 from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, EngineException, InvalidResponseException, TimeoutException
+from engine.game.player import Player
 from engine.game.state import State
 from engine.queries.query_claim_territory import QueryClaimTerritory
 from engine.queries.query_defend import QueryDefend
@@ -25,7 +26,7 @@ from engine.records.moves.move_distribute_troops import MoveDistributeTroops
 from engine.records.moves.move_redeem_cards import MoveRedeemCards
 from engine.records.moves.move_fortify import MoveFortify
 from engine.records.moves.move_attack import MoveAttack
-from engine.records.record_turn_order import RecordTurnOrder
+from engine.records.record_start_game import RecordStartGame
 
 P = ParamSpec("P")
 T1 = TypeVar("T1")
@@ -151,12 +152,12 @@ class PlayerConnection():
     def _get_record_update_dict(self, state: State):
         if self._record_update_watermark >= len(state.match_history):
             raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
-        result = dict([(i, x) for i, x in enumerate(state.match_history[self._record_update_watermark:])])
+        result = dict([(i, x.get_public_record()) for i, x in enumerate(state.match_history[self._record_update_watermark:])])
         self._record_update_watermark = len(state.match_history)
         return result
 
     def query_claim_territory(self, state: State) -> MoveClaimTerritory:
-        data = QueryClaimTerritory(you=state.players[self.player_id], update=self._get_record_update_dict(state)))
+        data = QueryClaimTerritory(you=state.players[self.player_id], update=self._get_record_update_dict(state))
         return self._query_move(data, MoveClaimTerritory, state)
 
 
@@ -193,10 +194,11 @@ class PlayerConnection():
 if __name__ == "__main__":
     state = State()
     connection = PlayerConnection(player_id=0)
+    players = [Player.factory(0, 25)]
 
     turn_order = [x for x in range(5)]
     random.shuffle(turn_order)
-    record_turn_order = RecordTurnOrder(turn_order=turn_order)
+    record_turn_order = RecordStartGame(turn_order=turn_order, players=[player.get_public() for player in players])
     record_turn_order.commit(state)
 
     try:
