@@ -2,9 +2,9 @@ from io import TextIOWrapper
 import math
 from signal import SIGALRM, alarm, signal
 from time import time
-from typing import Callable, ParamSpec, TypeVar, final
+from typing import Callable, ParamSpec, Type, TypeVar, final
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, EngineException, InvalidResponseException, TimeoutException
@@ -86,6 +86,7 @@ def time_limited(error_message: str = "You took too long to respond."):
     return dfn1
 
 
+T = TypeVar("T", bound=BaseModel)
 @final
 class PlayerConnection():
 
@@ -135,62 +136,42 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
+    def _query_response(self, query: BaseModel, response: Type[T], state: State) -> T:
+        self._send(query.model_dump_json())
+
+        _response = self._receive()
+        return response.model_validate_json(_response, context={"state": state, "player": self.player_id})
+
+
     def query_claim_territory(self, state: State) -> ResponseClaimTerritory:
         data = QueryClaimTerritory(territories=state.territories.values(), players=state.players.values())
-        self._send(data.model_dump_json())
+        return self._query_response(data, ResponseClaimTerritory, state)
 
-        response = self._receive()
-        return ResponseClaimTerritory.model_validate_json(response, context={"state": state, "player": self.player_id})
 
-    @handle_invalid
-    @handle_sigpipe
-    @time_limited()
     def query_place_initial_troop(self, state: State) -> ResponsePlaceInitialTroop:
         data = QueryPlaceInitialTroop(territories=state.territories.values(), players=state.players.values())
-        self._send(data.model_dump_json())
+        return self._query_response(data, ResponsePlaceInitialTroop, state)
         
-        response = self._receive()
-        return ResponsePlaceInitialTroop.model_validate_json(response, context={"state": state, "player": self.player_id})
-        
-    @handle_invalid
-    @handle_sigpipe
-    @time_limited()
+
     def query_place_player_troop(self, state: State) -> ResponsePlacePlayerTroop:
         data = QueryPlacePlayerTroop(territories=state.territories.values(), players=state.players.values())
-        self._send(data.model_dump_json())
-        
-        response = self._receive()
-        return ResponsePlacePlayerTroop.model_validate_json(response, context={"state": state, "player": self.player_id})    
+        return self._query_response(data, ResponsePlacePlayerTroop, state) 
     
-    @handle_invalid
-    @handle_sigpipe
-    @time_limited()
+
     def query_redeem_card_decision(self, state: State) -> ResponseRedeemCardDecision:
         data = QueryRedeemCardDecision(territories=state.territories.values(), players=state.players.values())
-        self._send(data.model_dump_json())
-        
-        response = self._receive()
-        return ResponseRedeemCardDecision.model_validate_json(response, context={"state": state, "player": self.player_id})
+        return self._query_response(data, ResponseRedeemCardDecision, state) 
     
-    @handle_invalid
-    @handle_sigpipe
-    @time_limited()
+
     def query_redeem_player_cards(self, state: State) -> ResponseRedeemPlayerCards:
         data = QueryRedeemPlayerCards(territories=state.territories.values(), players=state.players.values())
-        self._send(data.model_dump_json())
-
-        response = self._receive()
-        return ResponseRedeemPlayerCards.model_validate_json(response, context={"state": state, "player": self.player_id})
+        return self._query_response(data, ResponseRedeemPlayerCards, state) 
     
-    @handle_invalid
-    @handle_sigpipe
-    @time_limited()
+
     def query_fortify_territory(self, state: State) -> ResponseFortifyTerritory:
         data = QueryFortifyTerritory(territories=state.territories.values(), players=state.players.values())
-        self._send(data.model_dump_json())
+        return self._query_response(data, ResponseFortifyTerritory, state) 
 
-        response = self._receive()
-        return ResponseFortifyTerritory.model_validate_json(response, context={"state": state, "player": self.player_id})
 
 if __name__ == "__main__":
     state = State()

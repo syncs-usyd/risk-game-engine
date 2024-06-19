@@ -10,8 +10,8 @@ class ResponseFortifyTerritory(BaseModel):
     @model_validator(mode='before')
     @classmethod
     def _check_values(cls, data: dict, info: ValidationInfo):
-        state = info.context['state']
-        player = info.context['player']
+        state = info.context['state'] # type: ignore
+        player = info.context['player'] # type: ignore
         fields = ['source_territory_id', 'target_territory_id', 'troops']
 
         if not all(x in fields for x in data):
@@ -25,8 +25,8 @@ class ResponseFortifyTerritory(BaseModel):
 
     @model_validator(mode='after')
     def _check_troops(self, info: ValidationInfo):
-        state = info.context['state']
-        player = info.context['player']
+        state = info.context['state'] # type: ignore
+        player = info.context['player'] # type: ignore
 
         if not self.source_territory_id in state.territories:
             raise ValueError(f"No territory exists with territory_id {self.source_territory_id}.")

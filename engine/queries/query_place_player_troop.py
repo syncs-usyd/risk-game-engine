@@ -1,12 +1,11 @@
 from typing import Iterable, Literal
-from pydantic import BaseModel
 
-from engine.models.player.player_private_model import PlayerPrivateModel
 from engine.models.player.player_public_model import PlayerPublicModel
 from engine.models.territory_model import TerritoryModel
+from engine.queries.base_query import BaseQuery
 
 
-class QueryPlacePlayerTroop(BaseModel):
-    query: Literal["place_player_troop"] = "place_player_troop"
+class QueryPlacePlayerTroop(BaseQuery):
+    query_type: Literal["place_player_troop"] = "place_player_troop"
     territories: Iterable[TerritoryModel]
     players: Iterable[PlayerPublicModel]
