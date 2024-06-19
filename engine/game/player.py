@@ -9,7 +9,8 @@ class Player(PlayerPrivateModel):
 
     @classmethod
     def factory(cls, player_id: int, initial_troops: int) -> 'Player':
-        return cls(player_id=player_id, troops=initial_troops, alive=True, cards=[])
+        return cls(player_id=player_id, troops_remaining=initial_troops, alive=True, cards=[], cards_held=0)
     
     def get_cards(self):
         return self.cards
+    

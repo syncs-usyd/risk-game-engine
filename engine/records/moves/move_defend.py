@@ -1,12 +1,12 @@
 from pydantic import BaseModel, ValidationInfo, model_validator
 
 
-class ResponseDefendTerritory(BaseModel):
+class MoveDefend(BaseModel):
     territory_id: int
     num_troops: int
 
     @model_validator(mode="after")
-    def _check_territory_occupied(self: 'ResponseDefendTerritory', info: ValidationInfo) -> 'ResponseDefendTerritory':
+    def _check_territory_occupied(self: 'MoveDefend', info: ValidationInfo) -> 'MoveDefend':
         state: GameState = info.context["state"] # type: ignore
 
         if not 1 <= self.num_troops <= 2:

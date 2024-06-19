@@ -3,14 +3,14 @@ from engine.records.base_record import BaseRecord
 
 
 class BaseMove(BaseRecord):
-    made_move: int
+    move_by_player: int
 
-    @field_validator("made_move")
+    @field_validator("move_by_player")
     @classmethod
-    def _check_made_move(cls, v: int, info: ValidationInfo)
+    def _check_move_made_by_player(cls, v: int, info: ValidationInfo)
         player = info.context["player"] # type: ignore
 
         if not v == player:
-            raise ValueError("You set 'made_move' to a player_id other than yourself.")
+            raise ValueError("You set 'move_by_player' to a player_id other than yourself.")
         
         return v

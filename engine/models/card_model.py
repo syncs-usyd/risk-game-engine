@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Literal, Optional, Union
 from pydantic import BaseModel
 
 
 class CardModel(BaseModel):
+    card_id: int
     territory_id: int
-    occupier: Optional[int]
-    troops_count: int
-    troop_type: str
+    symbol: Union[Literal["Infantry"], Literal["Cavalry"], Literal["Artillery"], Literal["Wildcard"]]
+

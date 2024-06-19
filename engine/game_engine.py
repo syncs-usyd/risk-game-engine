@@ -22,7 +22,7 @@ class GameEngine:
     def __init__(self):
         self.state = State()
         self.connections = dict([(x, PlayerConnection(player_id=x)) for x in self.state.players.keys()])
-        
+
         turn_order = list(self.state.players.keys())
         random.shuffle(turn_order)
         self.turn_order = deque(turn_order)
@@ -49,16 +49,16 @@ class GameEngine:
             claimed_territory = self.state.territories[response.territory_id]
             claimed_territory.occupier = player.player_id
             claimed_territory.troops = 1
-            player.troops -= 1
+            player.troops_remaining -= 1
 
 
     def _start_place_initial_troops_phase(self):
         turn_order = self.turn_order.copy()
 
-        while len(list(filter(lambda x: x.troops > 0, self.state.players.values()))) > 0:
+        while len(list(filter(lambda x: x.troops_remaining > 0, self.state.players.values()))) > 0:
             player, connection = get_next_turn(self.state, self.connections, turn_order)
 
-            if player.troops == 0:
+            if player.troops_remaining == 0:
                 continue
 
             response = connection.query_place_initial_troop(self.state)
@@ -66,7 +66,7 @@ class GameEngine:
             # The player increases the troop count of this territory by one.
             selected_territory = self.state.territories[response.territory_id]
             selected_territory.troops += 1
-            player.troops -= 1
+            player.troops_remaining -= 1
 
     def _player_troop_phase(self, player: Player, connection: PlayerConnection):
         # Player can redeem cards.
@@ -84,24 +84,24 @@ class GameEngine:
         
         # Calculating player's troop count with territories and continents.
         player_territories = [territory_id for territory_id, territory in self.state.territories.items() if territory.occupier == player.player_id]
-        player.troops += max(3, len(player_territories) // 3)
+        player.troops_remaining += max(3, len(player_territories) // 3)
 
         # Since I have changed alot of stuff check if this for loop still works later
         for continent, territories in self.state.map._continents.items():
             if all(territory_id in player_territories for territory_id in territories.values()): # type: ignore
-                player.troops += self.state.map._continent_bonuses[continent]
+                player.troops_remaining += self.state.map._continent_bonuses[continent]
 
         # Player can place troops on territories they own.
-        while player.troops != 0:
+        while player.troops_remaining != 0:
             response = connection.query_place_player_troop(self.state)
 
             # The player increases the troop count of this territory depending on how many troops they want to place.
             selected_territory = self.state.territories[response.territory_id]
             selected_territory.troops += 1
-            player.troops -= 1
+            player.troops_remaining -= 1
 
     def _player_fortify_phase(self, player: Player, connection: PlayerConnection):
-        if player.troops == 0:
+        if player.troops_remaining == 0:
             return
         
         response = connection.query_fortify_territory(self.state)

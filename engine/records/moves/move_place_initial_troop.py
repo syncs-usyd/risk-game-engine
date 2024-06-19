@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 
-class ResponsePlaceInitialTroop(BaseModel):
+class MovePlaceInitialTroop(BaseModel):
     territory_id: int
 
     @field_validator("territory_id")
@@ -11,7 +11,7 @@ class ResponsePlaceInitialTroop(BaseModel):
         player = info.context["player"] # type: ignore
 
         if not v in state.territories:
-            raise ValueError(f"No territory exists with territory_id {v}.")
+            raise ValueError(f"You tried to claim a nonexistant territory with id {v}.")
         
         if state.territories[v].occupier != player:
             raise ValueError(f"You don't occupy this territory.")  

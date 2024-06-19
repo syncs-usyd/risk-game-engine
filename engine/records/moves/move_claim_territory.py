@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 
-class ResponseClaimTerritory(BaseModel):
+class MoveClaimTerritory(BaseModel):
     territory_id: int
 
     @field_validator("territory_id")
@@ -10,9 +10,9 @@ class ResponseClaimTerritory(BaseModel):
         state = info.context["state"] # type: ignore
 
         if not v in state.territories:
-            raise ValueError(f"No territory exists with territory_id {v}.")
+            raise ValueError(f"You tried to claim a nonexistant territory with id {v}.")
         
         if state.territories[v].occupier != None:
-            raise ValueError(f"Territory is already claimed.")  
+            raise ValueError(f"You tried to claim a territory that is already claimed.")  
         
         return v

@@ -11,11 +11,11 @@ from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, E
 from engine.game.state import State
 from engine.queries.query_claim_territory import QueryClaimTerritory
 from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
-from engine.queries.query_attack_territory import QueryAttackTerritory
-from engine.queries.query_place_player_troop import QueryPlacePlayerTroop
+from engine.queries.query_attack import QueryAttack
+from engine.queries.query_distribute_troops import QueryDistributeTroops
 from engine.queries.query_redeem_card_decision import QueryRedeemCardDecision
-from engine.queries.query_redeem_player_cards import QueryRedeemPlayerCards
-from engine.queries.query_fortify_territory import QueryFortifyTerritory
+from engine.queries.query_redeem_cards import QueryRedeemCards
+from engine.queries.query_fortify import QueryFortifyTerritory
 from engine.records.response_claim_territory import ResponseClaimTerritory
 from engine.records.response_place_initial_troop import ResponsePlaceInitialTroop
 from engine.records.response_redeem_card_decision import ResponseRedeemCardDecision
@@ -156,7 +156,7 @@ class PlayerConnection():
 
 
     def query_attack_territory(self, state: State) -> ResponseAttackTerritory:
-        data = QueryAttackTerritory(territories=state.territories.values(), players=state.players.values())
+        data = QueryAttack(territories=state.territories.values(), players=state.players.values())
         return self._query_move(data, ResponseAttackTerritory, state)
 
 
@@ -166,7 +166,7 @@ class PlayerConnection():
         
 
     def query_place_player_troop(self, state: State) -> ResponsePlacePlayerTroop:
-        data = QueryPlacePlayerTroop(territories=state.territories.values(), players=state.players.values())
+        data = QueryDistributeTroops(territories=state.territories.values(), players=state.players.values())
         return self._query_move(data, ResponsePlacePlayerTroop, state) 
     
 
@@ -176,7 +176,7 @@ class PlayerConnection():
     
 
     def query_redeem_player_cards(self, state: State) -> ResponseRedeemPlayerCards:
-        data = QueryRedeemPlayerCards(territories=state.territories.values(), players=state.players.values())
+        data = QueryRedeemCards(territories=state.territories.values(), players=state.players.values())
         return self._query_move(data, ResponseRedeemPlayerCards, state) 
     
 
