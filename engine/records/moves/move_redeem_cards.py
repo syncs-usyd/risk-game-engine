@@ -1,8 +1,9 @@
-from typing import Literal, Tuple, TypeGuard, final
-from pydantic import ValidationInfo, field_validator
+from typing import Literal, Tuple, TypeGuard, Union, final
+from pydantic import ValidationInfo, field_validator, model_validator
 
 from engine.game.card import Card
 from engine.game.state import State
+from engine.queries.query_redeem_cards import QueryRedeemCards
 from engine.records.base_move import BaseMove
 from engine.records.record_redeemed_cards import RecordRedeemedCards
 
@@ -10,12 +11,16 @@ from engine.records.record_redeemed_cards import RecordRedeemedCards
 class MoveRedeemCards(BaseMove):
     record_type: Literal["move_redeem_cards"] = "move_redeem_cards"
     sets: list[Tuple[int, int, int]]
+    cause: Union[Literal["turn_started"], Literal["player_eliminated"]]
 
-    @field_validator("sets")
-    @classmethod
-    def _check_redeem_player_cards(cls, sets: list[Tuple[int, int, int]], info: ValidationInfo):
+    @model_validator(mode="after")
+    def _check_redeem_player_cards(self, info: ValidationInfo):
         state: State = info.context["state"] # type: ignore
-        player = info.context["player"] # type: ignore
+        player: int = info.context["player"] # type: ignore
+        query: QueryRedeemCards = info.context["query"] # type: ignore
+
+        if self.cause != query.cause:
+            raise ValueError(f"You tried to change the cause of this move from {query.cause}.")
 
         def check_card_set(card_set):
             for i in card_set:
@@ -37,20 +42,24 @@ class MoveRedeemCards(BaseMove):
                 raise ValueError(f"Your card sets contain duplicates of a single card.")
 
         all_cards = []
-        for card_set in sets:
+        for card_set in self.sets:
             check_card_set(card_set)
             all_cards.extend(card_set)
 
         check_owns_cards(all_cards)
         check_no_duplicates(all_cards) 
         
-        if len(set(map(lambda x: x.card_id, state.players[player].cards)) - set(all_cards)) >= 5:
+        cards_held_after_redeeming = len(set(map(lambda x: x.card_id, state.players[player].cards)) - set(all_cards))
+        if cards_held_after_redeeming >= 5:
             raise ValueError(f"You need to redeem more cards, you must have less than 5 cards remaining after redeeming.")
+        
+        if self.cause == "player_eliminated" and cards_held_after_redeeming < 2:
+            raise ValueError("You must stop redeeming cards once you have less than 5 cards remaining if you are redeeming cards after killing a player.")
 
-        return sets
+        return self
 
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
 

@@ -3,7 +3,7 @@ import math
 import random
 from signal import SIGALRM, alarm, signal
 from time import time
-from typing import Any, Callable, ParamSpec, Type, TypeVar, final
+from typing import Any, Callable, Literal, ParamSpec, Type, TypeVar, Union, final
 
 from pydantic import BaseModel, ValidationError
 
@@ -11,6 +11,7 @@ from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, M
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, EngineException, InvalidResponseException, TimeoutException
 from engine.game.player import Player
 from engine.game.state import State
+from engine.queries.base_query import BaseQuery
 from engine.queries.query_claim_territory import QueryClaimTerritory
 from engine.queries.query_defend import QueryDefend
 from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
@@ -18,6 +19,7 @@ from engine.queries.query_attack import QueryAttack
 from engine.queries.query_distribute_troops import QueryDistributeTroops
 from engine.queries.query_redeem_cards import QueryRedeemCards
 from engine.queries.query_fortify import QueryFortifyTerritory
+from engine.queries.query_troops_after_attack import QueryTroopsAfterAttack
 from engine.records.moves.move_claim_territory import MoveClaimTerritory
 from engine.records.moves.move_claim_territory import MoveClaimTerritory
 from engine.records.moves.move_defend import MoveDefend
@@ -143,52 +145,57 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
-    def _query_move(self, query: BaseModel, response: Type[T2], state: State, context: Any = None) -> T2:
+    def _query_move(self, query: BaseQuery, response: Type[T2], state: State) -> T2:
         self._send(query.model_dump_json())
 
         _response = self._receive()
-        return response.model_validate_json(_response, context={"state": state, "player": self.player_id, "context": context})
+        return response.model_validate_json(_response, context={"state": state, "player": self.player_id, "query": query})
 
     def _get_record_update_dict(self, state: State):
         if self._record_update_watermark >= len(state.match_history):
             raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
-        result = dict([(i, x.get_public_record()) for i, x in enumerate(state.match_history[self._record_update_watermark:])])
+        result = dict([(i, x.get_public_record(self.player_id)) for i, x in enumerate(state.match_history[self._record_update_watermark:])])
         self._record_update_watermark = len(state.match_history)
         return result
 
     def query_claim_territory(self, state: State) -> MoveClaimTerritory:
-        data = QueryClaimTerritory(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveClaimTerritory, state)
+        query = QueryClaimTerritory(update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveClaimTerritory, state)
 
 
     def query_place_initial_troop(self, state: State) -> MovePlaceInitialTroop:
-        data = QueryPlaceInitialTroop(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MovePlaceInitialTroop, state)
+        query = QueryPlaceInitialTroop(update=self._get_record_update_dict(state))
+        return self._query_move(query, MovePlaceInitialTroop, state)
 
 
     def query_attack(self, state: State) -> MoveAttack:
-        data = QueryAttack(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveAttack, state)
+        query = QueryAttack(update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveAttack, state)
 
 
-    def query_defend(self, state: State, move_attack: int) -> MoveDefend:
-        data = QueryDefend(you=state.players[self.player_id], move_attack=move_attack, update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveDefend, state, move_attack)
-        
-
-    def query_distribute_troops(self, state: State) -> MoveDistributeTroops:
-        data = QueryDistributeTroops(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveDistributeTroops, state) 
+    def query_defend(self, state: State, move_attack_id: int) -> MoveDefend:
+        query = QueryDefend(move_attack_id=move_attack_id, update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveDefend, state)
     
 
-    def query_redeem_cards(self, state: State) -> MoveRedeemCards:
-        data = QueryRedeemCards(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveRedeemCards, state) 
+    def query_troops_after_attack(self, state: State, record_attack_id: int) -> MoveDefend:
+        query = QueryTroopsAfterAttack(record_attack_id=record_attack_id, update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveDefend, state)
+        
+
+    def query_distribute_troops(self, state: State, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveDistributeTroops:
+        query = QueryDistributeTroops(cause=cause, update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveDistributeTroops, state) 
+    
+
+    def query_redeem_cards(self, state: State, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveRedeemCards:
+        query = QueryRedeemCards(cause=cause, update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveRedeemCards, state) 
     
 
     def query_fortify(self, state: State) -> MoveFortify:
-        data = QueryFortifyTerritory(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveFortify, state) 
+        query = QueryFortifyTerritory(update=self._get_record_update_dict(state))
+        return self._query_move(query, MoveFortify, state) 
 
 
 if __name__ == "__main__":

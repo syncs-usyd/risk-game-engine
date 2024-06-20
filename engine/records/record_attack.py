@@ -10,23 +10,23 @@ from engine.records.record_territory_conquered import RecordTerritoryConquered
 @final
 class RecordAttack(BaseRecord):
     record_type: Literal["record_attack"] = "record_attack"
-    move_attack: int
-    move_defend: int
+    move_attack_id: int
+    move_defend_id: int
     attacking_troops_lost: int
     defending_troops_lost: int
     territory_conquered: bool
     defender_eliminated: bool
 
     @classmethod
-    def factory(cls, state: State, move_attack: int, move_defend: int) -> 'RecordAttack':
+    def factory(cls, state: State, move_attack_id: int, move_defend_id: int) -> 'RecordAttack':
 
-        move_attack_obj = cast(MoveAttack, state.match_history[move_attack])
+        move_attack_obj = cast(MoveAttack, state.match_history[move_attack_id])
         if move_attack_obj.move == "pass":
             raise RuntimeError("Tried to record an attack relying on a move attack that was a pass.")
 
         attacking_troops = move_attack_obj.move.attacking_troops
         
-        move_defend_obj = cast(MoveDefend, state.match_history[move_defend])
+        move_defend_obj = cast(MoveDefend, state.match_history[move_defend_id])
         defending_troops = move_defend_obj.defending_troops
 
         def roll():
@@ -44,17 +44,15 @@ class RecordAttack(BaseRecord):
 
         defender_eliminated = territory_conquered and len(list(filter(lambda x: x.occupier == move_defend_obj.move_by_player, state.territories.values()))) == 1
 
-        return cls(move_attack=move_attack, move_defend=move_defend, attacking_troops_lost=attacking_troops_lost, defending_troops_lost=defending_troops_lost, territory_conquered=territory_conquered, defender_eliminated=defender_eliminated)
+        return cls(move_attack_id=move_attack_id, move_defend_id=move_defend_id, attacking_troops_lost=attacking_troops_lost, defending_troops_lost=defending_troops_lost, territory_conquered=territory_conquered, defender_eliminated=defender_eliminated)
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
     def commit(self, state: State) -> None:
         state.match_history.append(self)
-        record_attack = len(state.match_history) - 1
 
-        move_attack_obj = cast(MoveAttack, state.match_history[self.move_attack])
-        move_defend_obj = cast(MoveDefend, state.match_history[self.move_defend])
+        move_attack_obj = cast(MoveAttack, state.match_history[self.move_attack_id])
 
         if move_attack_obj.move == "pass":
             raise RuntimeError("Tried to commit record attack for move attack that was a pass.")

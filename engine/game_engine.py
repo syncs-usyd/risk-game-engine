@@ -1,13 +1,11 @@
 import random
 from typing import Tuple
-from engine.config.gameconfig import NUM_PLAYERS
 from collections import deque
 
 from engine.connection.player_connection import PlayerConnection
 from engine.exceptions import EngineException
 from engine.game.player import Player
 from engine.game.state import State
-from engine.game.attackhelper import AttackHelper
 from engine.records.record_attack import RecordAttack
 from engine.records.record_player_eliminated import RecordPlayerEliminated
 from engine.records.record_shuffled_cards import RecordShuffledCards
@@ -71,15 +69,15 @@ class GameEngine:
         record.commit(self.state)
 
         # Let the player redeem cards.
-        response = connection.query_redeem_cards(self.state)
+        response = connection.query_redeem_cards(self.state, cause="turn_started")
         response.commit(self.state)
 
         # Let the player distribute troops.
-        response = connection.query_distribute_troops(self.state)
+        response = connection.query_distribute_troops(self.state, cause="turn_started")
         response.commit(self.state)
 
 
-    def _attack_phase(self, player, connection: PlayerConnection):
+    def _attack_phase(self, player: Player, connection: PlayerConnection):
 
         while (True):
 
@@ -102,26 +100,32 @@ class GameEngine:
             move_defend_id = len(self.state.match_history) - 1
 
             # Emit the RecordAttack.
-            record_attack = RecordAttack.factory(state=self.state, move_attack=move_attack_id, move_defend=move_defend_id)
+            record_attack = RecordAttack.factory(state=self.state, move_attack_id=move_attack_id, move_defend_id=move_defend_id)
             record_attack.commit(self.state)
             record_attack_id = len(self.state.match_history) - 1
 
-            # Emit a RecordTerritoryConquered.
+            # Emit a RecordTerritoryConquered and then allow player to move troops.
             if record_attack.territory_conquered:
-                record = RecordTerritoryConquered(record_attack=record_attack_id)
+                record = RecordTerritoryConquered(record_attack_id=record_attack_id)
                 record.commit(self.state)
 
-                # TODO Move Troops.
+                response = connection.query_troops_after_attack(self.state, record_attack_id)
+                response.commit(self.state)
 
-            # Emit a RecordPlayerEliminated.
+            # Emit a RecordPlayerEliminated and then allow player to redeem cards and distribute troops if required.
             if record_attack.defender_eliminated:
                 record = RecordPlayerEliminated.factory(self.state, move_defend_id, defending_player)
                 record.commit(self.state)
 
-                # TODO Redeem cards.
+                if len(player.cards) > 6:
+                    response = connection.query_redeem_cards(self.state, cause="player_eliminated")
+                    response.commit(self.state)
+
+                    response = connection.query_distribute_troops(self.state, cause="player_eliminated")
+                    response.commit(self.state)
 
 
-    def _fortify_phase(self, _: Player, connection: PlayerConnection):
+    def _fortify_phase(self, player: Player, connection: PlayerConnection):
         response = connection.query_fortify(self.state)
         response.commit(self.state)
 

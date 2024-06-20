@@ -5,6 +5,7 @@ from engine.game.map import Map
 from engine.game.player import Player
 from engine.game.territory import Territory
 from engine.maps import earth
+from engine.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 
 if TYPE_CHECKING:
     from engine.records.moves.move_attack import MoveAttack
@@ -34,7 +35,7 @@ class State():
         self.turn_order: list[int] = [x.player_id for x in self.players.values()]
         self.match_history: list[Union['RecordAttack', 'RecordDrewCard', 'RecordPlayerEliminated',
                             'RecordRedeemedCards', 'RecordShuffledCards', 'RecordStartGame', 
-                            'RecordStartTurn', 'RecordTerritoryConquered', 'MoveAttack', 
-                            'MoveClaimTerritory', 'MoveDefend', 'MoveFortify', 
+                            'RecordStartTurn', 'RecordTerritoryConquered', 'MoveTroopsAfterAttack',
+                            'MoveAttack', 'MoveClaimTerritory', 'MoveDefend', 'MoveFortify', 
                             'MovePlaceInitialTroop', 'MoveRedeemCards']] = []
                             

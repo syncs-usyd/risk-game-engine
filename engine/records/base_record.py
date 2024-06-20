@@ -6,7 +6,7 @@ class BaseRecord(BaseModel, ABC):
     record_type: str
 
     @abstractmethod
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         pass
 
     @abstractmethod

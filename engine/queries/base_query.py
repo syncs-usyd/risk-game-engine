@@ -8,6 +8,7 @@ from engine.records.moves.move_defend import MoveDefend
 from engine.records.moves.move_fortify import MoveFortify
 from engine.records.moves.move_place_initial_troop import MovePlaceInitialTroop
 from engine.records.moves.move_redeem_cards import MoveRedeemCards
+from engine.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 from engine.records.record_attack import RecordAttack
 from engine.records.record_drew_card import PublicRecordDrewCard
 from engine.records.record_player_eliminated import PublicRecordPlayerEliminated
@@ -20,9 +21,8 @@ from engine.records.record_territory_conquered import RecordTerritoryConquered
 
 class BaseQuery(BaseModel):
     query_type: str
-    you: PlayerModel
     update: dict[int, Union[RecordAttack, PublicRecordDrewCard, PublicRecordPlayerEliminated,
                             RecordRedeemedCards, RecordShuffledCards, RecordStartGame, 
-                            RecordStartTurn, RecordTerritoryConquered, MoveAttack, 
-                            MoveClaimTerritory, MoveDefend, MoveFortify, 
+                            RecordStartTurn, RecordTerritoryConquered, MoveTroopsAfterAttack,
+                            MoveAttack, MoveClaimTerritory, MoveDefend, MoveFortify, 
                             MovePlaceInitialTroop, MoveRedeemCards]] = Field(discriminator="record_type")

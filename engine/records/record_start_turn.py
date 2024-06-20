@@ -25,7 +25,7 @@ class RecordStartTurn(BaseRecord):
 
         return cls(player=player, continents_held=continents_held, territories_held=len(player_territories), continent_bonus=continent_bonus, territory_bonus=territory_bonus)
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
     def commit(self, state: State) -> None:

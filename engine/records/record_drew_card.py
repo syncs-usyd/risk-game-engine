@@ -11,12 +11,20 @@ class RecordDrewCard(BaseRecord):
     player: int
     card: CardModel
 
-    def get_public_record(self):
-        return PublicRecordDrewCard.model_validate(self.model_dump())
+    def get_public_record(self, player_id: int):
+        return PublicRecordDrewCard(player=self.player)
 
     def commit(self, state: State) -> None:
         raise NotImplementedError
 
 
-class PublicRecordDrewCard(BaseModel):
+@final
+class PublicRecordDrewCard(BaseRecord):
+    record_type: Literal["public_record_drew_card"] = "public_record_drew_card"
     player: int
+
+    def get_public_record(self, player_id: int):
+        return self
+
+    def commit(self, state: State) -> None:
+        raise NotImplementedError

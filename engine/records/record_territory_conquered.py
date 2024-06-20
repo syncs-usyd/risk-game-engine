@@ -7,15 +7,15 @@ from engine.records.moves.move_attack import MoveAttack
 @final
 class RecordTerritoryConquered(BaseRecord):
     record_type: Literal["record_territory_conquered"] = "record_territory_conquered"
-    record_attack: int
+    record_attack_id: int
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
     def commit(self, state: State) -> None:
         state.match_history.append(self)
 
-        move_attack_obj = cast(MoveAttack, state.match_history[self.record_attack])
+        move_attack_obj = cast(MoveAttack, state.match_history[self.record_attack_id])
         if move_attack_obj.move == "pass":
             raise RuntimeError("Tried to record territory conquered for attack that was a pass.")
 

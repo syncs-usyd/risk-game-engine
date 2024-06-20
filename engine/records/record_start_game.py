@@ -9,7 +9,7 @@ class RecordStartGame(BaseRecord):
     turn_order: Sequence[int]
     players: Sequence[PublicPlayerModel]
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
     def commit(self, state: State) -> None:

@@ -11,7 +11,7 @@ class RecordDrewCard(BaseRecord):
     player: int
     reason: str
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
     def commit(self, state: State) -> None:

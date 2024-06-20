@@ -7,7 +7,7 @@ from engine.records.base_record import BaseRecord
 class RecordShuffledCards(BaseRecord):
     record_type: Literal["record_shuffled_cards"] = "record_shuffled_cards"
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
         return self
 
     def commit(self, state: State) -> None:
