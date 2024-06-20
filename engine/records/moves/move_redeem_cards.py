@@ -89,7 +89,7 @@ class MoveRedeemCards(BaseMove):
         state.discarded_deck.extend([state.cards[i] for i in all_cards])
         
         # Emit a RecordRedeemedCards.
-        record = RecordRedeemedCards(redeem_cards_move=len(state.match_history), total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
+        record = RecordRedeemedCards(redeem_cards_move=len(state.match_history) - 1, total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
         record.commit(state)
 
 

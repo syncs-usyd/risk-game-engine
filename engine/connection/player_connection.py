@@ -3,7 +3,7 @@ import math
 import random
 from signal import SIGALRM, alarm, signal
 from time import time
-from typing import Callable, ParamSpec, Type, TypeVar, final
+from typing import Any, Callable, ParamSpec, Type, TypeVar, final
 
 from pydantic import BaseModel, ValidationError
 
@@ -143,11 +143,11 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
-    def _query_move(self, query: BaseModel, response: Type[T2], state: State) -> T2:
+    def _query_move(self, query: BaseModel, response: Type[T2], state: State, context: Any = None) -> T2:
         self._send(query.model_dump_json())
 
         _response = self._receive()
-        return response.model_validate_json(_response, context={"state": state, "player": self.player_id})
+        return response.model_validate_json(_response, context={"state": state, "player": self.player_id, "context": context})
 
     def _get_record_update_dict(self, state: State):
         if self._record_update_watermark >= len(state.match_history):
@@ -171,9 +171,9 @@ class PlayerConnection():
         return self._query_move(data, MoveAttack, state)
 
 
-    def query_defend(self, state: State) -> MoveDefend:
-        data = QueryDefend(you=state.players[self.player_id], update=self._get_record_update_dict(state))
-        return self._query_move(data, MoveDefend, state)
+    def query_defend(self, state: State, move_attack: int) -> MoveDefend:
+        data = QueryDefend(you=state.players[self.player_id], move_attack=move_attack, update=self._get_record_update_dict(state))
+        return self._query_move(data, MoveDefend, state, move_attack)
         
 
     def query_distribute_troops(self, state: State) -> MoveDistributeTroops:
