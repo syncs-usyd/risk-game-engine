@@ -11,8 +11,8 @@ from pydantic import ValidationError
 
 from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, PlayerException, InvalidResponseException, TimeoutException
-from risk_engine.game.player import Player
 from risk_engine.game.state import State
+from risk_shared.models.player_model import PlayerModel
 from risk_shared.records.types.move_type import MoveType
 from risk_shared.queries.base_query import BaseQuery
 from risk_shared.queries.query_claim_territory import QueryClaimTerritory
@@ -209,11 +209,11 @@ if __name__ == "__main__":
     mutator = StateMutator(state)
     validator = MoveValidator(state)
     connection = PlayerConnection(player_id=0)
-    players = [Player.factory(0, 25)]
+    players = [PlayerModel(player_id=0, troops_remaining=25, alive=True, cards=[], must_place_territory_bonus=[])]
 
     turn_order = [x for x in range(5)]
     random.shuffle(turn_order)
-    record_turn_order = RecordStartGame(turn_order=turn_order, players=[player.get_public() for player in players])
+    record_turn_order = RecordStartGame(turn_order=turn_order, players=players)
     mutator.commit(record_turn_order)
 
 

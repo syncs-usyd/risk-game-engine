@@ -8,7 +8,7 @@ from risk_shared.records.record_drew_card import PublicRecordDrewCard, RecordDre
 from risk_shared.records.record_player_eliminated import PublicRecordPlayerEliminated, RecordPlayerEliminated
 from risk_shared.records.record_redeemed_cards import RecordRedeemedCards
 from risk_shared.records.record_shuffled_cards import RecordShuffledCards
-from risk_shared.records.record_start_game import RecordStartGame
+from risk_shared.records.record_start_game import PublicRecordStartGame, RecordStartGame
 from risk_shared.records.record_start_turn import RecordStartTurn
 from risk_shared.records.record_territory_conquered import RecordTerritoryConquered
 from risk_shared.records.record_winner import RecordWinner
@@ -17,5 +17,5 @@ from risk_shared.records.record_winner import RecordWinner
 RecordType = Union[RecordAttack, PublicRecordDrewCard, RecordDrewCard, 
                     PublicRecordPlayerEliminated, RecordPlayerEliminated,
                     RecordRedeemedCards, RecordShuffledCards, RecordStartGame, 
-                    RecordStartTurn, RecordTerritoryConquered, RecordBanned, 
-                    RecordWinner, MoveType]
+                    PublicRecordStartGame, RecordStartTurn, RecordTerritoryConquered, 
+                    RecordBanned, RecordWinner, MoveType]

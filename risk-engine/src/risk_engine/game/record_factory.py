@@ -10,6 +10,7 @@ from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_defend import MoveDefend
 from risk_shared.records.record_attack import RecordAttack
 from risk_shared.records.record_banned import RecordBanned
+from risk_shared.records.record_drew_card import RecordDrewCard
 from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
 from risk_shared.records.record_start_turn import RecordStartTurn
 
@@ -77,3 +78,11 @@ def record_start_turn_factory(state: State, player: int) -> 'RecordStartTurn':
             continent_bonus += state.map.get_continent_bonus(continent)
 
     return RecordStartTurn(player=player, continents_held=continents_held, territories_held=len(player_territories), continent_bonus=continent_bonus, territory_bonus=territory_bonus)
+
+
+def record_drew_card_factory(state: State, player: int) -> 'RecordDrewCard':
+    if len(state.deck) == 0:
+        raise RuntimeError("Need to shuffle deck before drawing.")
+
+    return RecordDrewCard(player=player, card=state.cards.pop(0))
+        

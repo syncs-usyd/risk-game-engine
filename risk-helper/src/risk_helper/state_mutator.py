@@ -1,6 +1,5 @@
-import random
 from typing import TypeGuard, cast
-from risk_engine.game.state import State
+from risk_helper.state import State
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
@@ -11,11 +10,11 @@ from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 from risk_shared.records.record_attack import RecordAttack
 from risk_shared.records.record_banned import RecordBanned
-from risk_shared.records.record_drew_card import RecordDrewCard
-from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
+from risk_shared.records.record_drew_card import PublicRecordDrewCard, RecordDrewCard
+from risk_shared.records.record_player_eliminated import PublicRecordPlayerEliminated, RecordPlayerEliminated
 from risk_shared.records.record_redeemed_cards import RecordRedeemedCards
 from risk_shared.records.record_shuffled_cards import RecordShuffledCards
-from risk_shared.records.record_start_game import RecordStartGame
+from risk_shared.records.record_start_game import PublicRecordStartGame, RecordStartGame
 from risk_shared.records.record_start_turn import RecordStartTurn
 from risk_shared.records.record_territory_conquered import RecordTerritoryConquered
 from risk_shared.records.record_winner import RecordWinner
@@ -26,6 +25,7 @@ class StateMutator():
 
     def __init__(self, state: State):
         self.state = state
+
 
     def commit(self, record: RecordType):
         self.state.recording.append(record)
@@ -53,20 +53,24 @@ class StateMutator():
                 self._commit_record_banned(r)
             case RecordDrewCard() as r:
                 self._commit_record_drew_card(r)
+            case PublicRecordDrewCard() as r:
+                self._commit_public_record_drew_card(r)
             case RecordPlayerEliminated() as r:
                 self._commit_record_player_eliminated(r)
+            case PublicRecordPlayerEliminated() as r:
+                self._commit_public_record_player_eliminated(r)
             case RecordRedeemedCards() as r:
                 self._commit_record_redeemed_cards(r)
             case RecordShuffledCards() as r:
                 self._commit_record_shuffled_cards(r)
             case RecordStartGame() as r:
                 self._commit_record_start_game(r)
+            case PublicRecordStartGame() as r:
+                self._commit_public_record_start_game(r)
             case RecordStartTurn() as r:
                 self._commit_record_start_turn(r)
             case RecordTerritoryConquered() as r:
                 self._commit_record_territory_conquered(r)
-            case RecordWinner() as r:
-                self._commit_record_winner(r)
             case _:
                 raise NotImplementedError
             
@@ -141,7 +145,11 @@ class StateMutator():
         # Modify the player.
         self.state.players[r.move_by_player].troops_remaining += total_set_bonus + matching_territory_bonus
         self.state.players[r.move_by_player].must_place_territory_bonus = list(matching_territories)
-        self.state.players[r.move_by_player].cards = list(filter(lambda x: x.card_id not in set(all_cards), self.state.players[r.move_by_player].cards))
+        
+        if r.move_by_player == self.state.me.player_id:
+            self.state.me.cards = list(filter(lambda x: x.card_id not in set(all_cards), self.state.me.cards))
+        else:
+            self.state.players[r.move_by_player].card_count -= len(all_cards)
 
         # Place the redeemed cards in the discarded deck.
         self.state.discarded_deck.extend([self.state.cards[i] for i in all_cards])
@@ -157,7 +165,7 @@ class StateMutator():
         move_attack_id = record_attack.move_attack_id
         move_attack = cast(MoveAttack, self.state.recording[move_attack_id])
         if move_attack.move == "pass":
-            raise RuntimeError("Trying to move troops for attack that was a pass.")
+            raise RuntimeError("Please send us a discord message with this error log.")
         
         self.state.territories[move_attack.move.attacking_territory].troops -= r.troop_count
         self.state.territories[move_attack.move.defending_territory].troops += r.troop_count
@@ -167,7 +175,7 @@ class StateMutator():
         move_attack_obj = cast(MoveAttack, self.state.recording[x.move_attack_id])
 
         if move_attack_obj.move == "pass":
-            raise RuntimeError("Tried to commit record attack for move attack that was a pass.")
+            raise RuntimeError("Please send us a discord message with this error log.")
         attacking_territory = move_attack_obj.move.attacking_territory
         defending_territory = move_attack_obj.move.defending_territory
 
@@ -180,7 +188,18 @@ class StateMutator():
 
 
     def _commit_record_drew_card(self, r: RecordDrewCard) -> None:
-        self.state.players[r.player].cards.append(r.card)
+        if r.player != self.state.me.player_id:
+            raise RuntimeError("Please send us a discord message with this error log.")
+        
+        self.state.me.cards.append(r.card)
+
+
+    def _commit_public_record_drew_card(self, r: PublicRecordDrewCard) -> None:
+        if r.player == self.state.me.player_id:
+            raise RuntimeError("Please send us a discord message with this error log.")
+        
+        self.state.players[r.player].card_count += 1
+        self.state.deck_card_count -= 1
 
 
     def _commit_record_player_eliminated(self, r: RecordPlayerEliminated) -> None:
@@ -190,7 +209,25 @@ class StateMutator():
         # Their cards are surrendered.
         record_attack = cast(RecordAttack, self.state.recording[r.record_attack_id])
         move_attack = cast(MoveAttack, self.state.recording[record_attack.move_attack_id])
-        self.state.players[move_attack.move_by_player].cards.extend(r.cards_surrendered)
+
+        if move_attack.move_by_player != self.state.me.player_id:
+            raise RuntimeError("Please send us a discord message with this error log.")
+        
+        self.state.me.cards.extend(r.cards_surrendered)
+
+    
+    def _commit_public_record_player_eliminated(self, r: PublicRecordPlayerEliminated) -> None:
+        # The player is eliminated.
+        self.state.players[r.player].alive = False
+
+        # Their cards are surrendered.
+        record_attack = cast(RecordAttack, self.state.recording[r.record_attack_id])
+        move_attack = cast(MoveAttack, self.state.recording[record_attack.move_attack_id])
+
+        if move_attack.move_by_player == self.state.me.player_id:
+            raise RuntimeError("Please send us a discord message with this error log.")
+        
+        self.state.players[move_attack.move_by_player].card_count += r.cards_surrendered_count
 
 
     def _commit_record_redeemed_cards(self, r: RecordRedeemedCards) -> None:
@@ -198,15 +235,15 @@ class StateMutator():
 
 
     def _commit_record_shuffled_cards(self, r: RecordShuffledCards) -> None:
-        if len(self.state.deck) != 0:
-            raise RuntimeError("Shuffled cards before deck was empty.")
-
-        self.state.deck = self.state.discarded_deck
-        random.shuffle(self.state.deck)
+        self.state.deck_card_count = len(self.state.discarded_deck)
         self.state.discarded_deck = []
 
 
     def _commit_record_start_game(self, r: RecordStartGame) -> None:
+        raise RuntimeError("Please send us a discord message with this error log.")
+        
+
+    def _commit_public_record_start_game(self, r: PublicRecordStartGame) -> None:
         self.state.turn_order = list(r.turn_order).copy()
 
 
@@ -217,13 +254,9 @@ class StateMutator():
     def _commit_record_territory_conquered(self, r: RecordTerritoryConquered) -> None:
         move_attack_obj = cast(MoveAttack, self.state.recording[r.record_attack_id])
         if move_attack_obj.move == "pass":
-            raise RuntimeError("Tried to record territory conquered for attack that was a pass.")
+            raise RuntimeError("Please send us a discord message with this error log.")
 
         defending_territory = move_attack_obj.move.defending_territory
 
         self.state.territories[defending_territory].troops = 0
         self.state.territories[defending_territory].occupier = move_attack_obj.move_by_player
-
-
-    def _commit_record_winner(self, r: RecordWinner) -> None:
-        pass
