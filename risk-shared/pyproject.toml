@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=62", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "risk-shared"
+description = "A library of code shared between the risk-engine and risk-helper packages."
+version = "1.0.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pydantic"]

@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: risk-engine
+Version: 1.0.0
+Summary: RISK: Global Domination game engine for SYNCS Bot Battle 2024.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic

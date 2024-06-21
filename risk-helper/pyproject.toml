@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=62", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "risk-helper"
+description = "A library to help write submissions for SYNCS Bot Battle 2024."
+version = "1.0.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pydantic"]
