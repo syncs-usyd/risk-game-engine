@@ -26,7 +26,7 @@ class MoveClaimTerritory(BaseMove):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
         player = state.players[self.move_by_player]
         
         claimed_territory = state.territories[self.territory_id]

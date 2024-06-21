@@ -13,9 +13,9 @@ class RecordTerritoryConquered(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
-        move_attack_obj = cast(MoveAttack, state.match_history[self.record_attack_id])
+        move_attack_obj = cast(MoveAttack, state.recording[self.record_attack_id])
         if move_attack_obj.move == "pass":
             raise RuntimeError("Tried to record territory conquered for attack that was a pass.")
 

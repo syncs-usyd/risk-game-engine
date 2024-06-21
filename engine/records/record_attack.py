@@ -20,13 +20,13 @@ class RecordAttack(BaseRecord):
     @classmethod
     def factory(cls, state: State, move_attack_id: int, move_defend_id: int) -> 'RecordAttack':
 
-        move_attack_obj = cast(MoveAttack, state.match_history[move_attack_id])
+        move_attack_obj = cast(MoveAttack, state.recording[move_attack_id])
         if move_attack_obj.move == "pass":
             raise RuntimeError("Tried to record an attack relying on a move attack that was a pass.")
 
         attacking_troops = move_attack_obj.move.attacking_troops
         
-        move_defend_obj = cast(MoveDefend, state.match_history[move_defend_id])
+        move_defend_obj = cast(MoveDefend, state.recording[move_defend_id])
         defending_troops = move_defend_obj.defending_troops
 
         def roll():
@@ -50,9 +50,9 @@ class RecordAttack(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
-        move_attack_obj = cast(MoveAttack, state.match_history[self.move_attack_id])
+        move_attack_obj = cast(MoveAttack, state.recording[self.move_attack_id])
 
         if move_attack_obj.move == "pass":
             raise RuntimeError("Tried to commit record attack for move attack that was a pass.")

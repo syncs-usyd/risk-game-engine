@@ -40,7 +40,7 @@ class MoveFortify(BaseMove):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
         state.territories[self.source_territory].troops -= self.troop_count
         state.territories[self.target_territory].troops += self.troop_count

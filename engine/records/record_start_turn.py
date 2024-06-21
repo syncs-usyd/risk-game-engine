@@ -29,6 +29,6 @@ class RecordStartTurn(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
         state.players[self.player].troops_remaining += self.territory_bonus + self.continent_bonus

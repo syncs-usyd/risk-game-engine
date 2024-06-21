@@ -20,7 +20,7 @@ class MoveDefend(BaseMove):
         if self.move_attack_id != query.move_attack_id:
             raise ValueError(f"You have to defend the attack with record id {query.move_attack_id}.")
 
-        move_attack_obj = cast(MoveAttack, state.match_history[self.move_attack_id])
+        move_attack_obj = cast(MoveAttack, state.recording[self.move_attack_id])
         if move_attack_obj.move == "pass":
             raise RuntimeError("Trying to defend attack move that was a pass.")
         
@@ -39,4 +39,4 @@ class MoveDefend(BaseMove):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)

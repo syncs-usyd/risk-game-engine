@@ -12,10 +12,12 @@ class RecordDrewCard(BaseRecord):
     card: CardModel
 
     def get_public_record(self, player_id: int):
+        if self.player == player_id:
+            return self
         return PublicRecordDrewCard(player=self.player)
 
     def commit(self, state: State) -> None:
-        raise NotImplementedError
+        state.recording.append(self)
 
 
 @final

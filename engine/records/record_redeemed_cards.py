@@ -13,4 +13,4 @@ class RecordRedeemedCards(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)

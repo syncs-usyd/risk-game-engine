@@ -27,6 +27,6 @@ class MovePlaceInitialTroop(BaseMove):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
         state.territories[self.territory_id].troops += 1
         state.players[self.move_by_player].troops_remaining -= 1

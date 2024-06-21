@@ -20,11 +20,13 @@ class RecordPlayerEliminated(BaseRecord):
         cards_surrendered = list(state.players[player].cards).copy()
         return cls(player=player, record_attack_id=record_attack_id, cards_surrendered=cards_surrendered)
 
-    def get_public_record(self):
+    def get_public_record(self, player_id: int):
+        if self.player == player_id:
+            return self
         return PublicRecordPlayerEliminated(record_attack=self.record_attack_id, cards_surrendered_count=len(self.cards_surrendered))
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
 
 @final

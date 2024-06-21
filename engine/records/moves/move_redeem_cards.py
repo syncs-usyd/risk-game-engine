@@ -64,7 +64,7 @@ class MoveRedeemCards(BaseMove):
 
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
         def calculate_set_bonus(x: int):
             fixed_values = [4, 6, 8, 10, 12, 15]
@@ -98,7 +98,7 @@ class MoveRedeemCards(BaseMove):
         state.discarded_deck.extend([state.cards[i] for i in all_cards])
         
         # Emit a RecordRedeemedCards.
-        record = RecordRedeemedCards(redeem_cards_move=len(state.match_history) - 1, total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
+        record = RecordRedeemedCards(redeem_cards_move=len(state.recording) - 1, total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
         record.commit(state)
 
 

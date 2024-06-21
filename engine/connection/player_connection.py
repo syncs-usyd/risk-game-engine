@@ -8,7 +8,7 @@ from typing import Any, Callable, Literal, ParamSpec, Type, TypeVar, Union, fina
 from pydantic import BaseModel, ValidationError
 
 from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
-from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, EngineException, InvalidResponseException, TimeoutException
+from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, PlayerException, InvalidResponseException, TimeoutException
 from engine.game.player import Player
 from engine.game.state import State
 from engine.queries.base_query import BaseQuery
@@ -152,10 +152,10 @@ class PlayerConnection():
         return response.model_validate_json(_response, context={"state": state, "player": self.player_id, "query": query})
 
     def _get_record_update_dict(self, state: State):
-        if self._record_update_watermark >= len(state.match_history):
+        if self._record_update_watermark >= len(state.recording):
             raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
-        result = dict([(i, x.get_public_record(self.player_id)) for i, x in enumerate(state.match_history[self._record_update_watermark:])])
-        self._record_update_watermark = len(state.match_history)
+        result = dict([(i, x.get_public_record(self.player_id)) for i, x in enumerate(state.recording[self._record_update_watermark:])])
+        self._record_update_watermark = len(state.recording)
         return result
 
     def query_claim_territory(self, state: State) -> MoveClaimTerritory:
@@ -212,5 +212,5 @@ if __name__ == "__main__":
         response = connection.query_claim_territory(state)
         response.commit(state)
         print(state.territories)
-    except EngineException as e:
+    except PlayerException as e:
         raise e

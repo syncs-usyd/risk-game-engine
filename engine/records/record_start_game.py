@@ -13,5 +13,5 @@ class RecordStartGame(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
         state.turn_order = list(self.turn_order).copy()

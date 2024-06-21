@@ -21,10 +21,10 @@ class MoveTroopsAfterAttack(BaseMove):
         if self.record_attack_id != query.record_attack_id:
             raise ValueError(f"You must move troops for the attack record with id {query.record_attack_id}.")
 
-        record_attack = cast(RecordAttack, state.match_history[self.record_attack_id])
+        record_attack = cast(RecordAttack, state.recording[self.record_attack_id])
 
         move_attack_id = record_attack.move_attack_id
-        move_attack = cast(MoveAttack, state.match_history[move_attack_id])
+        move_attack = cast(MoveAttack, state.recording[move_attack_id])
         if move_attack.move == "pass":
             raise RuntimeError("Trying to move troops for attack that was a pass.")
 
@@ -42,12 +42,12 @@ class MoveTroopsAfterAttack(BaseMove):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
-        record_attack = cast(RecordAttack, state.match_history[self.record_attack_id])
+        record_attack = cast(RecordAttack, state.recording[self.record_attack_id])
 
         move_attack_id = record_attack.move_attack_id
-        move_attack = cast(MoveAttack, state.match_history[move_attack_id])
+        move_attack = cast(MoveAttack, state.recording[move_attack_id])
         if move_attack.move == "pass":
             raise RuntimeError("Trying to move troops for attack that was a pass.")
         

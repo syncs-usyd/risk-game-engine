@@ -11,7 +11,7 @@ class RecordShuffledCards(BaseRecord):
         return self
 
     def commit(self, state: State) -> None:
-        state.match_history.append(self)
+        state.recording.append(self)
 
         if len(state.deck) != 0:
             raise RuntimeError("Shuffled cards before deck was empty.")

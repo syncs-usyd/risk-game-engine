@@ -1,18 +1,18 @@
-class EngineException(Exception):
+class PlayerException(Exception):
     def __init__(self, player_id, error_message: str):
         super().__init__(error_message)
         self.player_id = player_id
         self.error_message = error_message
 
 
-class TimeoutException(EngineException):
+class TimeoutException(PlayerException):
     pass
 
-class CumulativeTimeoutException(EngineException):
+class CumulativeTimeoutException(PlayerException):
     pass
 
-class BrokenPipeException(EngineException):
+class BrokenPipeException(PlayerException):
     pass
 
-class InvalidResponseException(EngineException):
+class InvalidResponseException(PlayerException):
     pass
