@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: risk-shared
+Version: 1.0.0
+Summary: A library of code shared between the risk-engine and risk-helper packages.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic

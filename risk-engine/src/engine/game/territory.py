@@ -1,6 +1,6 @@
 from typing import final
 
-from engine.models.territory_model import TerritoryModel
+from risk_shared.models.territory_model import TerritoryModel
 
 
 @final

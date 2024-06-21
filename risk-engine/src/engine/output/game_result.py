@@ -1,9 +1,7 @@
-
-
-from typing import Literal, Union
+from typing import Literal
 from pydantic import BaseModel
 
-from engine.output.ban_type import BanType
+from risk_shared.output.ban_type import BanType
 
 class GameBanResult(BaseModel):
     result_type: BanType

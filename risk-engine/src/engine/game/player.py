@@ -2,7 +2,7 @@
 
 from typing import final
 
-from engine.models.player.player_model import PlayerModel
+from risk_shared.models.player_model import PlayerModel
 
 
 @final

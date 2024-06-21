@@ -5,13 +5,13 @@ import random
 from typing import cast
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidResponseException, PlayerException, TimeoutException
 from engine.game.state import State
-from engine.output.ban_type import BanType
-from engine.records.moves.move_attack import MoveAttack
-from engine.records.moves.move_defend import MoveDefend
-from engine.records.record_attack import RecordAttack
-from engine.records.record_banned import RecordBanned
-from engine.records.record_player_eliminated import RecordPlayerEliminated
-from engine.records.record_start_turn import RecordStartTurn
+from risk_shared.output.ban_type import BanType
+from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.moves.move_defend import MoveDefend
+from risk_shared.records.record_attack import RecordAttack
+from risk_shared.records.record_banned import RecordBanned
+from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
+from risk_shared.records.record_start_turn import RecordStartTurn
 
 
 def record_attack_factory(state: State, move_attack_id: int, move_defend_id: int) -> 'RecordAttack':

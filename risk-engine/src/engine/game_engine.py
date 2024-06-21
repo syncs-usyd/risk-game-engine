@@ -9,15 +9,14 @@ from engine.exceptions import PlayerException
 from engine.game.player import Player
 from engine.game.record_factory import record_attack_factory, record_banned_factory, record_player_eliminated_factory, record_start_turn_factory
 from engine.game.state import State
+from engine.game.state_mutator import StateMutator
 from engine.output.game_result import GameBanResult, GameSuccessResult
 from engine.output.recording_inspector import RecordingInspector
-from engine.records.record_attack import RecordAttack
-from engine.records.record_player_eliminated import RecordPlayerEliminated
-from engine.records.record_shuffled_cards import RecordShuffledCards
-from engine.records.record_start_game import RecordStartGame
-from engine.records.record_start_turn import RecordStartTurn
-from engine.records.record_territory_conquered import RecordTerritoryConquered
-from engine.records.record_winner import RecordWinner
+from engine.validation.move_validator import MoveValidator
+from risk_shared.records.record_shuffled_cards import RecordShuffledCards
+from risk_shared.records.record_start_game import RecordStartGame
+from risk_shared.records.record_territory_conquered import RecordTerritoryConquered
+from risk_shared.records.record_winner import RecordWinner
 
 def get_next_turn(state: State, connections: dict[int, PlayerConnection], turn_order: deque[int]) -> Tuple[Player, PlayerConnection]:
         player_id = turn_order.pop()
@@ -31,6 +30,8 @@ def get_next_turn(state: State, connections: dict[int, PlayerConnection], turn_o
 class GameEngine:
     def __init__(self):
         self.state = State()
+        self.mutator = StateMutator(self.state)
+        self.validator = MoveValidator(self.state)
         self.connections = dict([(x, PlayerConnection(player_id=x)) for x in self.state.players.keys()])
 
 
@@ -39,7 +40,7 @@ class GameEngine:
             self._run_game()
         except PlayerException as e:
             record = record_banned_factory(e)
-            self.state.commit(record)
+            self.mutator.commit(record)
 
         self._finish()
 
@@ -92,11 +93,11 @@ class GameEngine:
         turn_order = list(self.state.players.keys())
         random.shuffle(turn_order)
         record_start_game = RecordStartGame(turn_order=self.state.turn_order.copy(), players=[Player.model_validate(v.model_dump()).get_public() for v in self.state.players.values()])
-        self.state.commit(record_start_game)
+        self.mutator.commit(record_start_game)
 
         # Emit RecordShuffledCards.
         record_shuffled_cards = RecordShuffledCards()
-        self.state.commit(record_shuffled_cards)
+        self.mutator.commit(record_shuffled_cards)
 
         # Run the initial phases.
         self._start_claim_territories_phase()
@@ -116,7 +117,7 @@ class GameEngine:
         # Emit RecordWinner.
         winner = filter(lambda x: x.alive == True, self.state.players.values()).__next__().player_id
         record = RecordWinner(player=winner)
-        self.state.commit(record)
+        self.mutator.commit(record)
 
 
 
@@ -125,8 +126,8 @@ class GameEngine:
 
         while len(list(filter(lambda x: x.occupier == None, self.state.territories.values()))) > 0:
             _, connection = get_next_turn(self.state, self.connections, turn_order)
-            response = connection.query_claim_territory(self.state)
-            self.state.commit(response)
+            response = connection.query_claim_territory(self.state, self.validator)
+            self.mutator.commit(response)
 
 
     def _start_place_initial_troops_phase(self):
@@ -138,23 +139,23 @@ class GameEngine:
             if player.troops_remaining == 0:
                 continue
 
-            response = connection.query_place_initial_troop(self.state)
-            self.state.commit(response)
+            response = connection.query_place_initial_troop(self.state, self.validator)
+            self.mutator.commit(response)
 
 
     def _troop_phase(self, player: Player, connection: PlayerConnection):
         
         # Emit a RecordStartTurn.
         record = record_start_turn_factory(self.state, player.player_id)
-        self.state.commit(record)
+        self.mutator.commit(record)
 
         # Let the player redeem cards.
-        response = connection.query_redeem_cards(self.state, cause="turn_started")
-        self.state.commit(response)
+        response = connection.query_redeem_cards(self.state, self.validator, cause="turn_started")
+        self.mutator.commit(response)
 
         # Let the player distribute troops.
-        response = connection.query_distribute_troops(self.state, cause="turn_started")
-        self.state.commit(response)
+        response = connection.query_distribute_troops(self.state, self.validator, cause="turn_started")
+        self.mutator.commit(response)
 
 
     def _attack_phase(self, player: Player, connection: PlayerConnection):
@@ -162,8 +163,8 @@ class GameEngine:
         while (True):
 
             # Get the attack move.
-            attack = connection.query_attack(self.state)
-            self.state.commit(attack)
+            attack = connection.query_attack(self.state, self.validator)
+            self.mutator.commit(attack)
             move_attack_id = len(self.state.recording) - 1
 
             # If the player passes, move to the next phase.
@@ -175,37 +176,37 @@ class GameEngine:
                 raise RuntimeError("Tried to attack unoccupied territory.")
 
             # Get the defend move.
-            defend = self.connections[defending_player].query_defend(self.state, move_attack_id)
-            defend.commit(self.state)
+            defend = self.connections[defending_player].query_defend(self.state, self.validator, move_attack_id)
+            self.mutator.commit(defend)
             move_defend_id = len(self.state.recording) - 1
 
             # Emit the RecordAttack.
             record_attack = record_attack_factory(state=self.state, move_attack_id=move_attack_id, move_defend_id=move_defend_id)
-            self.state.commit(record_attack)
+            self.mutator.commit(record_attack)
             record_attack_id = len(self.state.recording) - 1
 
             # Emit a RecordTerritoryConquered and then allow player to move troops.
             if record_attack.territory_conquered:
                 record = RecordTerritoryConquered(record_attack_id=record_attack_id)
-                self.state.commit(record)
+                self.mutator.commit(record)
 
-                response = connection.query_troops_after_attack(self.state, record_attack_id)
-                self.state.commit(response)
+                response = connection.query_troops_after_attack(self.state, self.validator, record_attack_id)
+                self.mutator.commit(response)
 
             # Emit a RecordPlayerEliminated and then allow player to redeem cards and distribute troops if required.
             if record_attack.defender_eliminated:
                 record = record_player_eliminated_factory(self.state, move_defend_id, defending_player)
-                self.state.commit(record)
+                self.mutator.commit(record)
 
                 if len(player.cards) > 6:
-                    response = connection.query_redeem_cards(self.state, cause="player_eliminated")
-                    self.state.commit(response)
+                    response = connection.query_redeem_cards(self.state, self.validator, cause="player_eliminated")
+                    self.mutator.commit(response)
 
-                    response = connection.query_distribute_troops(self.state, cause="player_eliminated")
-                    self.state.commit(response)
+                    response = connection.query_distribute_troops(self.state, self.validator, cause="player_eliminated")
+                    self.mutator.commit(response)
 
 
     def _fortify_phase(self, player: Player, connection: PlayerConnection):
-        response = connection.query_fortify(self.state)
-        self.state.commit(response)
+        response = connection.query_fortify(self.state, self.validator)
+        self.mutator.commit(response)
         

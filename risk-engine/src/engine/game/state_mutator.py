@@ -1,26 +1,25 @@
-
-
 import random
 from typing import TypeGuard, cast
 from engine.game.state import State
-from engine.records.moves.move_attack import MoveAttack
-from engine.records.moves.move_claim_territory import MoveClaimTerritory
-from engine.records.moves.move_defend import MoveDefend
-from engine.records.moves.move_distribute_troops import MoveDistributeTroops
-from engine.records.moves.move_fortify import MoveFortify
-from engine.records.moves.move_place_initial_troop import MovePlaceInitialTroop
-from engine.records.moves.move_redeem_cards import MoveRedeemCards
-from engine.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
-from engine.records.record_attack import RecordAttack
-from engine.records.record_banned import RecordBanned
-from engine.records.record_drew_card import RecordDrewCard
-from engine.records.record_player_eliminated import RecordPlayerEliminated
-from engine.records.record_redeemed_cards import RecordRedeemedCards
-from engine.records.record_shuffled_cards import RecordShuffledCards
-from engine.records.record_start_game import RecordStartGame
-from engine.records.record_start_turn import RecordStartTurn
-from engine.records.record_territory_conquered import RecordTerritoryConquered
-from engine.records.record_winner import RecordWinner
+from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
+from risk_shared.records.moves.move_defend import MoveDefend
+from risk_shared.records.moves.move_distribute_troops import MoveDistributeTroops
+from risk_shared.records.moves.move_fortify import MoveFortify
+from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
+from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
+from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
+from risk_shared.records.record_attack import RecordAttack
+from risk_shared.records.record_banned import RecordBanned
+from risk_shared.records.record_drew_card import RecordDrewCard
+from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
+from risk_shared.records.record_redeemed_cards import RecordRedeemedCards
+from risk_shared.records.record_shuffled_cards import RecordShuffledCards
+from risk_shared.records.record_start_game import RecordStartGame
+from risk_shared.records.record_start_turn import RecordStartTurn
+from risk_shared.records.record_territory_conquered import RecordTerritoryConquered
+from risk_shared.records.record_winner import RecordWinner
+from risk_shared.records.types.record_type import RecordType
 
 
 class StateMutator():
@@ -28,7 +27,9 @@ class StateMutator():
     def __init__(self, state: State):
         self.state = state
 
-    def commit(self, record):
+    def commit(self, record: RecordType):
+        self.state.recording.append(record)
+
         match record:
             case MoveAttack() as r:
                 self._commit_move_attack(r)
@@ -77,7 +78,7 @@ class StateMutator():
     def _commit_move_claim_territory(self, r: MoveClaimTerritory) -> None:
         player = self.state.players[r.move_by_player]
         
-        claimed_territory = self.state.territories[r.territory_id]
+        claimed_territory = self.state.territories[r.territory]
         claimed_territory.occupier = r.move_by_player
         claimed_territory.troops = 1
         player.troops_remaining -= 1
@@ -108,7 +109,7 @@ class StateMutator():
 
     def _commit_move_place_initial_troop(self, r: MovePlaceInitialTroop) -> None:
         self.state.recording.append(r)
-        self.state.territories[r.territory_id].troops += 1
+        self.state.territories[r.territory].troops += 1
         self.state.players[r.move_by_player].troops_remaining -= 1
 
 

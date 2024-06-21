@@ -4,10 +4,10 @@ from typing import Iterable, Union
 
 from pydantic import BaseModel
 from engine.output.game_result import GameBanResult, GameSuccessResult
-from engine.records.record_banned import RecordBanned
-from engine.records.record_player_eliminated import RecordPlayerEliminated
-from engine.records.record_winner import RecordWinner
-from engine.records.types.record_type import RecordType
+from risk_shared.records.record_banned import RecordBanned
+from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
+from risk_shared.records.record_winner import RecordWinner
+from risk_shared.records.types.record_type import RecordType
 
 
 class RecordingInspector():

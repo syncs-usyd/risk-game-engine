@@ -1,5 +1,5 @@
 from typing import Optional, final
-from engine.models.card_model import CardModel
+from risk_shared.models.card_model import CardModel
 
 @final
 class Card(CardModel):

@@ -3,32 +3,35 @@ import math
 import random
 from signal import SIGALRM, alarm, signal
 from time import time
-from typing import Any, Callable, Literal, ParamSpec, Type, TypeVar, Union, final
+from typing import Callable, Literal, ParamSpec, Type, TypeVar, Union, final
 
-from pydantic import BaseModel, ValidationError
+from engine.game.state_mutator import StateMutator
+from engine.validation.move_validator import MoveValidator
+from pydantic import ValidationError
 
 from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, PlayerException, InvalidResponseException, TimeoutException
 from engine.game.player import Player
 from engine.game.state import State
-from engine.queries.base_query import BaseQuery
-from engine.queries.query_claim_territory import QueryClaimTerritory
-from engine.queries.query_defend import QueryDefend
-from engine.queries.query_place_initial_troop import QueryPlaceInitialTroop
-from engine.queries.query_attack import QueryAttack
-from engine.queries.query_distribute_troops import QueryDistributeTroops
-from engine.queries.query_redeem_cards import QueryRedeemCards
-from engine.queries.query_fortify import QueryFortifyTerritory
-from engine.queries.query_troops_after_attack import QueryTroopsAfterAttack
-from engine.records.moves.move_claim_territory import MoveClaimTerritory
-from engine.records.moves.move_claim_territory import MoveClaimTerritory
-from engine.records.moves.move_defend import MoveDefend
-from engine.records.moves.move_place_initial_troop import MovePlaceInitialTroop
-from engine.records.moves.move_distribute_troops import MoveDistributeTroops
-from engine.records.moves.move_redeem_cards import MoveRedeemCards
-from engine.records.moves.move_fortify import MoveFortify
-from engine.records.moves.move_attack import MoveAttack
-from engine.records.record_start_game import RecordStartGame
+from risk_shared.records.types.move_type import MoveType
+from risk_shared.queries.base_query import BaseQuery
+from risk_shared.queries.query_claim_territory import QueryClaimTerritory
+from risk_shared.queries.query_defend import QueryDefend
+from risk_shared.queries.query_place_initial_troop import QueryPlaceInitialTroop
+from risk_shared.queries.query_attack import QueryAttack
+from risk_shared.queries.query_distribute_troops import QueryDistributeTroops
+from risk_shared.queries.query_redeem_cards import QueryRedeemCards
+from risk_shared.queries.query_fortify import QueryFortifyTerritory
+from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
+from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
+from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
+from risk_shared.records.moves.move_defend import MoveDefend
+from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
+from risk_shared.records.moves.move_distribute_troops import MoveDistributeTroops
+from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
+from risk_shared.records.moves.move_fortify import MoveFortify
+from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.record_start_game import RecordStartGame
 
 P = ParamSpec("P")
 T1 = TypeVar("T1")
@@ -94,7 +97,7 @@ def time_limited(error_message: str = "You took too long to respond."):
     return dfn1
 
 
-T2 = TypeVar("T2", bound=BaseModel)
+T2 = TypeVar("T2", bound=MoveType)
 @final
 class PlayerConnection():
 
@@ -145,11 +148,13 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
-    def _query_move(self, query: BaseQuery, response: Type[T2], state: State) -> T2:
+    def _query_move(self, query: BaseQuery, response_type: Type[T2], validator: MoveValidator) -> T2:
         self._send(query.model_dump_json())
 
-        _response = self._receive()
-        return response.model_validate_json(_response, context={"state": state, "player": self.player_id, "query": query})
+        move = response_type.model_validate_json(self._receive())
+        validator.validate(move, query, self.player_id)
+        return move
+
 
     def _get_record_update_dict(self, state: State):
         if self._record_update_watermark >= len(state.recording):
@@ -158,59 +163,63 @@ class PlayerConnection():
         self._record_update_watermark = len(state.recording)
         return result
 
-    def query_claim_territory(self, state: State) -> MoveClaimTerritory:
+
+    def query_claim_territory(self, state: State, validator: MoveValidator) -> MoveClaimTerritory:
         query = QueryClaimTerritory(update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveClaimTerritory, state)
+        return self._query_move(query, MoveClaimTerritory, validator)
 
 
-    def query_place_initial_troop(self, state: State) -> MovePlaceInitialTroop:
+    def query_place_initial_troop(self, state: State, validator: MoveValidator) -> MovePlaceInitialTroop:
         query = QueryPlaceInitialTroop(update=self._get_record_update_dict(state))
-        return self._query_move(query, MovePlaceInitialTroop, state)
+        return self._query_move(query, MovePlaceInitialTroop, validator)
 
 
-    def query_attack(self, state: State) -> MoveAttack:
+    def query_attack(self, state: State, validator: MoveValidator) -> MoveAttack:
         query = QueryAttack(update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveAttack, state)
+        return self._query_move(query, MoveAttack, validator)
 
 
-    def query_defend(self, state: State, move_attack_id: int) -> MoveDefend:
+    def query_defend(self, state: State, validator: MoveValidator, move_attack_id: int) -> MoveDefend:
         query = QueryDefend(move_attack_id=move_attack_id, update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveDefend, state)
+        return self._query_move(query, MoveDefend, validator)
     
 
-    def query_troops_after_attack(self, state: State, record_attack_id: int) -> MoveDefend:
+    def query_troops_after_attack(self, state: State, validator: MoveValidator, record_attack_id: int) -> MoveDefend:
         query = QueryTroopsAfterAttack(record_attack_id=record_attack_id, update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveDefend, state)
+        return self._query_move(query, MoveDefend, validator)
         
 
-    def query_distribute_troops(self, state: State, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveDistributeTroops:
+    def query_distribute_troops(self, state: State, validator: MoveValidator, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveDistributeTroops:
         query = QueryDistributeTroops(cause=cause, update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveDistributeTroops, state) 
+        return self._query_move(query, MoveDistributeTroops, validator) 
     
 
-    def query_redeem_cards(self, state: State, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveRedeemCards:
+    def query_redeem_cards(self, state: State, validator: MoveValidator, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveRedeemCards:
         query = QueryRedeemCards(cause=cause, update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveRedeemCards, state) 
+        return self._query_move(query, MoveRedeemCards, validator) 
     
 
-    def query_fortify(self, state: State) -> MoveFortify:
+    def query_fortify(self, state: State, validator: MoveValidator) -> MoveFortify:
         query = QueryFortifyTerritory(update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveFortify, state) 
+        return self._query_move(query, MoveFortify, validator) 
 
 
 if __name__ == "__main__":
     state = State()
+    mutator = StateMutator(state)
+    validator = MoveValidator(state)
     connection = PlayerConnection(player_id=0)
     players = [Player.factory(0, 25)]
 
     turn_order = [x for x in range(5)]
     random.shuffle(turn_order)
     record_turn_order = RecordStartGame(turn_order=turn_order, players=[player.get_public() for player in players])
-    state.commit(record_turn_order)
+    mutator.commit(record_turn_order)
+
 
     try:
-        response = connection.query_claim_territory(state)
-        state.commit(response)
+        response = connection.query_claim_territory(state, validator)
+        mutator.commit(response)
         print(state.territories)
     except PlayerException as e:
         raise e
