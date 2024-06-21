@@ -3,16 +3,16 @@ import shutil
 from typing import Tuple
 from collections import deque
 
-from engine.config.ioconfig import CORE_DIRECTORY
-from engine.connection.player_connection import PlayerConnection
-from engine.exceptions import PlayerException
-from engine.game.player import Player
-from engine.game.record_factory import record_attack_factory, record_banned_factory, record_player_eliminated_factory, record_start_turn_factory
-from engine.game.state import State
-from engine.game.state_mutator import StateMutator
-from engine.output.game_result import GameBanResult, GameSuccessResult
-from engine.output.recording_inspector import RecordingInspector
-from engine.validation.move_validator import MoveValidator
+from risk_engine.config.ioconfig import CORE_DIRECTORY
+from risk_engine.connection.player_connection import PlayerConnection
+from risk_engine.exceptions import PlayerException
+from risk_engine.game.player import Player
+from risk_engine.game.record_factory import record_attack_factory, record_banned_factory, record_player_eliminated_factory, record_start_turn_factory
+from risk_engine.game.state import State
+from risk_engine.game.state_mutator import StateMutator
+from risk_engine.output.game_result import GameBanResult, GameSuccessResult
+from risk_engine.output.recording_inspector import RecordingInspector
+from risk_engine.validation.move_validator import MoveValidator
 from risk_shared.records.record_shuffled_cards import RecordShuffledCards
 from risk_shared.records.record_start_game import RecordStartGame
 from risk_shared.records.record_territory_conquered import RecordTerritoryConquered

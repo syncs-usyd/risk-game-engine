@@ -1,8 +1,8 @@
-from engine.config.gameconfig import NUM_PLAYERS, NUM_STARTING_TROOPS
-from engine.game.card import Card
+from risk_engine.config.gameconfig import NUM_PLAYERS, NUM_STARTING_TROOPS
+from risk_engine.game.card import Card
 from risk_shared.maps.map import Map
-from engine.game.player import Player
-from engine.game.territory import Territory
+from risk_engine.game.player import Player
+from risk_engine.game.territory import Territory
 from risk_shared.maps import earth
 from risk_shared.records.types.record_type import RecordType
 

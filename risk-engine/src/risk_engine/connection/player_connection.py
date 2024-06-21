@@ -5,14 +5,14 @@ from signal import SIGALRM, alarm, signal
 from time import time
 from typing import Callable, Literal, ParamSpec, Type, TypeVar, Union, final
 
-from engine.game.state_mutator import StateMutator
-from engine.validation.move_validator import MoveValidator
+from risk_engine.game.state_mutator import StateMutator
+from risk_engine.validation.move_validator import MoveValidator
 from pydantic import ValidationError
 
-from engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
-from engine.exceptions import BrokenPipeException, CumulativeTimeoutException, PlayerException, InvalidResponseException, TimeoutException
-from engine.game.player import Player
-from engine.game.state import State
+from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
+from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, PlayerException, InvalidResponseException, TimeoutException
+from risk_engine.game.player import Player
+from risk_engine.game.state import State
 from risk_shared.records.types.move_type import MoveType
 from risk_shared.queries.base_query import BaseQuery
 from risk_shared.queries.query_claim_territory import QueryClaimTerritory

@@ -1,6 +1,6 @@
 import random
 from typing import TypeGuard, cast
-from engine.game.state import State
+from risk_engine.game.state import State
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend

@@ -3,7 +3,7 @@
 from typing import Iterable, Union
 
 from pydantic import BaseModel
-from engine.output.game_result import GameBanResult, GameSuccessResult
+from risk_engine.output.game_result import GameBanResult, GameSuccessResult
 from risk_shared.records.record_banned import RecordBanned
 from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
 from risk_shared.records.record_winner import RecordWinner
