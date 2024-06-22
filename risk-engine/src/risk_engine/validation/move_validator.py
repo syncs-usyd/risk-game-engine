@@ -1,6 +1,6 @@
 from typing import cast
-from risk_engine.game.card import Card
 from risk_engine.game.state import State
+from risk_shared.models.card_model import CardModel
 from risk_shared.queries.base_query import BaseQuery
 from risk_shared.queries.query_defend import QueryDefend
 from risk_shared.queries.query_redeem_cards import QueryRedeemCards
@@ -142,6 +142,10 @@ class MoveValidator():
         if self.state.territories[r.target_territory].occupier != player:
             raise ValueError(f"You don't occupy the target territory.")
         
+        # The player can pass their turn by moving zero troops from one territory to itself.
+        if r.troop_count == 0 and r.source_territory == r.target_territory:
+            return
+
         if not self.state.map.is_adjacent(r.source_territory, r.target_territory):
             raise ValueError(f"Your target territory {r.target_territory} is not adjacent to your source territory {r.source_territory}.")
         
@@ -167,10 +171,11 @@ class MoveValidator():
             for i in card_set:
                 if i not in self.state.cards:
                     raise ValueError(f"You tried to redeem a nonexistant card with id {i}")
-            cards: list[Card] = [self.state.cards[i] for i in card_set]
+            cards: list[CardModel] = [self.state.cards[i] for i in card_set]
 
-            unique_symbols = len(set(map(lambda x: x.symbol, cards)))
-            if not (unique_symbols == 3 or unique_symbols == 1):
+            unique_symbols = set(map(lambda x: x.symbol, cards))
+            unique_symbols_count = len(unique_symbols)
+            if not (unique_symbols_count == 3 or unique_symbols_count == 1) or (unique_symbols_count == 2 and "Wildcard" in unique_symbols):
                 raise ValueError(f"You tried to redeem a set of cards {cards[0].symbol}, {cards[1].symbol}, {cards[2].symbol}, which is not a set.")
 
         def check_owns_cards(cards):

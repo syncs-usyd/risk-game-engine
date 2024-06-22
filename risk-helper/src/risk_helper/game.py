@@ -19,6 +19,7 @@ from risk_shared.records.moves.move_fortify import MoveFortify
 from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
 from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
+from risk_shared.records.types.move_type import MoveType
 
 
 class Game():
@@ -36,64 +37,68 @@ class Game():
             self.mutator.commit(i, record)
 
         return query
+    
+
+    def send_move(self, move: MoveType) -> None:
+        self.connection.send_move(move)
 
 
-    def move_attack(self, query: QueryAttack, move: Union[Literal["pass"], MoveAttackDescription]) -> None:
-        self.connection.send_move(MoveAttack(
+    def move_attack(self, query: QueryAttack, move: Union[Literal["pass"], MoveAttackDescription]) -> MoveAttack:
+        return MoveAttack(
             move_by_player=self.state.me.player_id,
             move=move
-        ))
+        )
 
 
-    def move_claim_territory(self, query: QueryClaimTerritory, territory: int) -> None:
-        self.connection.send_move(MoveClaimTerritory(
+    def move_claim_territory(self, query: QueryClaimTerritory, territory: int) -> MoveClaimTerritory:
+        return MoveClaimTerritory(
             move_by_player=self.state.me.player_id,
             territory=territory
-        ))
+        )
 
 
-    def move_defend(self, query: QueryDefend, defending_troops: int) -> None:
-        self.connection.send_move(MoveDefend(
+    def move_defend(self, query: QueryDefend, defending_troops: int) -> MoveDefend:
+        return MoveDefend(
             move_by_player=self.state.me.player_id,
             move_attack_id=query.move_attack_id,
             defending_troops=defending_troops
-        ))
+        )
 
 
-    def move_distribute_troops(self, query: QueryDistributeTroops, distributions: dict[int, int]) -> None:
-        self.connection.send_move(MoveDistributeTroops(
+    def move_distribute_troops(self, query: QueryDistributeTroops, distributions: dict[int, int]) -> MoveDistributeTroops:
+        return MoveDistributeTroops(
             move_by_player=self.state.me.player_id,
             distributions=distributions
-        ))
+        )
 
 
-    def move_fortify(self, query: QueryFortify, source_territory: int, target_territory: int, troop_count: int) -> None:
-        self.connection.send_move(MoveFortify(
+    def move_fortify(self, query: QueryFortify, source_territory: int, target_territory: int, troop_count: int) -> MoveFortify:
+        return MoveFortify(
             move_by_player=self.state.me.player_id,
             source_territory=source_territory,
             target_territory=target_territory,
             troop_count=troop_count
-        ))
+        )
 
 
-    def move_place_initial_troop(self, query: QueryPlaceInitialTroop, territory:int) -> None:
-        self.connection.send_move(MovePlaceInitialTroop(
+    def move_place_initial_troop(self, query: QueryPlaceInitialTroop, territory:int) -> MovePlaceInitialTroop:
+        return MovePlaceInitialTroop(
             move_by_player=self.state.me.player_id,
             territory=territory
-        ))
+        )
 
 
-    def move_redeem_cards(self, query: QueryRedeemCards, sets: list[Tuple[int, int, int]] ) -> None:
-        self.connection.send_move(MoveRedeemCards(
+    def move_redeem_cards(self, query: QueryRedeemCards, sets: list[Tuple[int, int, int]] ) -> MoveRedeemCards:
+        return MoveRedeemCards(
             move_by_player=self.state.me.player_id,
             cause=query.cause,
             sets=sets
-        ))
+        )
 
 
-    def move_troops_after_attack(self, query: QueryTroopsAfterAttack, troop_count: int) -> None:
-        self.connection.send_move(MoveTroopsAfterAttack(
+    def move_troops_after_attack(self, query: QueryTroopsAfterAttack, troop_count: int) -> MoveTroopsAfterAttack:
+        return MoveTroopsAfterAttack(
             move_by_player=self.state.me.player_id, 
             record_attack_id=query.record_attack_id, 
             troop_count=troop_count
-        ))
+        )

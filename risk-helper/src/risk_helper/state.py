@@ -1,3 +1,5 @@
+from collections import defaultdict
+from typing import Optional, Tuple, Union
 from risk_shared.maps import earth
 from risk_shared.models.card_model import CardModel
 from risk_shared.models.player_model import PlayerModel, PublicPlayerModel
@@ -19,4 +21,49 @@ class State():
         self.recording: list[RecordType] = []
         self.me: PlayerModel
 
+
+    def get_card_set(self, cards: list[CardModel]) -> Optional[Tuple[CardModel, CardModel, CardModel]]:
+        cards_by_symbol: dict[str, list[CardModel]] = defaultdict(list)
+        for card in cards:
+            cards_by_symbol[card.symbol].append(card)
+        
+        # Try to make a different symbols set.
+        symbols_held = [symbol for symbol in cards_by_symbol.keys() if len(cards_by_symbol[symbol]) > 0]
+        if len(symbols_held) >= 3:
+            return (cards_by_symbol[symbols_held[0]][0], cards_by_symbol[symbols_held[1]][0], cards_by_symbol[symbols_held[2]][0])
+        
+        # Try to make a matching symbols set.
+        for symbol, _cards in cards_by_symbol.items():
+            if symbol == "Wildcard":
+                continue
+
+            if len(_cards) == 3:
+                return (_cards[0], _cards[1], _cards[2])
+            elif len(_cards) == 2 and len(cards_by_symbol["Wildcard"]) >= 1:
+                return (_cards[0], _cards[1], cards_by_symbol["Wildcard"][0])
+            elif len(_cards) == 1 and len(cards_by_symbol["Wildcard"]) >= 2:
+                return (_cards[0], cards_by_symbol["Wildcard"][0], cards_by_symbol["Wildcard"][1])
+            
+        if len(cards_by_symbol["Wildcard"]) >= 3:
+            return (cards_by_symbol["Wildcard"][0], cards_by_symbol["Wildcard"][1], cards_by_symbol["Wildcard"][2])
+
+
+    def get_territories_owned_by(self, player: Union[int, None]) -> list[int]:
+        return list([y.territory_id for y in filter(lambda x: x.occupier == player, self.territories.values())])
     
+    
+    def get_all_border_territories(self, territories: list) -> list[int]:
+        result = []
+        for territory in territories:
+            result.extend(self.map.get_adjacent_to(territory))
+
+        return list(set(result) - set(territories))
+
+
+    def get_all_adjacent_territories(self, territories: list[int]) -> list[int]:
+        result: set[int] = set()
+        for territory in territories:
+            result |= set(self.map.get_adjacent_to(territory))
+
+        result -= set(territories)
+        return list(result)

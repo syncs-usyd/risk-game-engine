@@ -84,5 +84,5 @@ def record_drew_card_factory(state: State, player: int) -> 'RecordDrewCard':
     if len(state.deck) == 0:
         raise RuntimeError("Need to shuffle deck before drawing.")
 
-    return RecordDrewCard(player=player, card=state.cards.pop(0))
+    return RecordDrewCard(player=player, card=state.deck.pop())
         
