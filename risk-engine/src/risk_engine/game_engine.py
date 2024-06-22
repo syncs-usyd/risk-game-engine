@@ -3,6 +3,7 @@ import shutil
 from typing import Tuple
 from collections import deque
 
+from risk_engine.config.gameconfig import MAX_GAME_RECORDING_SIZE
 from risk_engine.config.ioconfig import CORE_DIRECTORY
 from risk_engine.connection.player_connection import PlayerConnection
 from risk_engine.exceptions import PlayerException
@@ -32,17 +33,21 @@ class GameEngine:
         self.state = State()
         self.mutator = StateMutator(self.state)
         self.validator = MoveValidator(self.state)
-        self.connections = dict([(x, PlayerConnection(player_id=x)) for x in self.state.players.keys()])
-
+        self.connections: dict[int, PlayerConnection]
 
     def start(self):
         try:
+            self._connect()
             self._run_game()
         except PlayerException as e:
             record = record_banned_factory(e)
             self.mutator.commit(record)
 
         self._finish()
+
+
+    def _connect(self):
+        self.connections = dict([(x, PlayerConnection(player_id=x)) for x in self.state.players.keys()])
 
 
     def _finish(self):
@@ -92,6 +97,7 @@ class GameEngine:
         # Emit RecordStartGame.
         turn_order = list(self.state.players.keys())
         random.shuffle(turn_order)
+        self.state.turn_order = turn_order
         record_start_game = RecordStartGame(turn_order=self.state.turn_order.copy(), players=list(self.state.players.values()))
         self.mutator.commit(record_start_game)
 
@@ -105,7 +111,7 @@ class GameEngine:
 
         # Run the main game.
         turn_order = deque(self.state.turn_order.copy())
-        while len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1:
+        while len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1 and len(self.state.recording) < MAX_GAME_RECORDING_SIZE:
             
             player, connection = get_next_turn(self.state, self.connections, turn_order)
             if not player.alive: continue
@@ -125,7 +131,7 @@ class GameEngine:
         turn_order = deque(self.state.turn_order.copy())
 
         while len(list(filter(lambda x: x.occupier == None, self.state.territories.values()))) > 0:
-            _, connection = get_next_turn(self.state, self.connections, turn_order)
+            player, connection = get_next_turn(self.state, self.connections, turn_order)
             response = connection.query_claim_territory(self.state, self.validator)
             self.mutator.commit(response)
 

@@ -76,6 +76,15 @@ class StateMutator():
             case _:
                 raise NotImplementedError
             
+        self._update_public_player_model_to_me()
+
+    
+    def _update_public_player_model_to_me(self) -> None:
+        player_id = self.state.me.player_id
+        self.state.me.alive = self.state.players[player_id].alive
+        self.state.me.troops_remaining = self.state.players[player_id].troops_remaining
+        self.state.me.must_place_territory_bonus = self.state.players[player_id].must_place_territory_bonus
+            
 
     def _commit_move_attack(self, r: MoveAttack) -> None:
         pass
@@ -114,7 +123,6 @@ class StateMutator():
 
 
     def _commit_move_place_initial_troop(self, r: MovePlaceInitialTroop) -> None:
-        self.state.recording.append(r)
         self.state.territories[r.territory].troops += 1
         self.state.players[r.move_by_player].troops_remaining -= 1
 
@@ -243,7 +251,7 @@ class StateMutator():
 
     def _commit_public_record_start_game(self, r: PublicRecordStartGame) -> None:
         self.state.turn_order = list(r.turn_order).copy()
-        self.players = dict([(x.player_id, x) for x in r.players])
+        self.state.players = dict([(x.player_id, x) for x in r.players])
         self.state.me = r.you
 
 

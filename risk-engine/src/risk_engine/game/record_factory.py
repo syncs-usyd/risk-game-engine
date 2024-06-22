@@ -3,7 +3,7 @@
 
 import random
 from typing import cast
-from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidResponseException, PlayerException, TimeoutException
+from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidMessageException, InvalidMoveException, PlayerException, TimeoutException
 from risk_engine.game.state import State
 from risk_shared.output.ban_type import BanType
 from risk_shared.records.moves.move_attack import MoveAttack
@@ -45,6 +45,7 @@ def record_attack_factory(state: State, move_attack_id: int, move_defend_id: int
 
 def record_banned_factory(e: PlayerException) -> 'RecordBanned':
     ban_type: BanType
+    invalid_move = None
     match e:
         case TimeoutException():
             ban_type = "TIMEOUT"
@@ -52,13 +53,15 @@ def record_banned_factory(e: PlayerException) -> 'RecordBanned':
             ban_type = "CUMULATIVE_TIMEOUT"
         case BrokenPipeException():
             ban_type = "BROKEN_PIPE"
-        case InvalidResponseException():
+        case InvalidMessageException():
+            ban_type = "INVALID_MESSAGE"
+        case InvalidMoveException() as e:
             ban_type = "INVALID_MOVE"
-
+            invalid_move = e.invalid_move
         case _:
             raise RuntimeError("An unspecified PlayerException was raised.")
 
-    return RecordBanned(player=e.player_id, reason=e.error_message, ban_type=ban_type)
+    return RecordBanned(player=e.player_id, reason=e.error_message, ban_type=ban_type, invalid_move=invalid_move)
 
 
 def record_player_eliminated_factory(state: State, record_attack_id: int, player: int) -> 'RecordPlayerEliminated':

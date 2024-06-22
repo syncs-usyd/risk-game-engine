@@ -2,7 +2,7 @@
 
 from typing import Iterable, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 from risk_engine.output.game_result import GameBanResult, GameSuccessResult
 from risk_shared.records.record_banned import RecordBanned
 from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
@@ -39,7 +39,4 @@ class RecordingInspector():
             
 
     def get_recording_json(self) -> str:
-        class GameRecording(BaseModel):
-            __root__: Iterable[RecordType]
-
-        return GameRecording(__root__=self.recording).model_dump_json()
+        return RootModel(self.recording).model_dump_json()

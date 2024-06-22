@@ -32,6 +32,9 @@ class State():
         if len(symbols_held) >= 3:
             return (cards_by_symbol[symbols_held[0]][0], cards_by_symbol[symbols_held[1]][0], cards_by_symbol[symbols_held[2]][0])
         
+        # To prevent implicitly modifying the dictionary in the for loop, we explicitly initialise the "Wildcard" key.
+        cards_by_symbol["Wildcard"]
+        
         # Try to make a matching symbols set.
         for symbol, _cards in cards_by_symbol.items():
             if symbol == "Wildcard":
@@ -53,17 +56,12 @@ class State():
     
     
     def get_all_border_territories(self, territories: list) -> list[int]:
+        return [territory for territory in territories if len(set(self.map.get_adjacent_to(territory)) - set(territories)) != 0]
+
+
+    def get_all_adjacent_territories(self, territories: list[int]) -> list[int]:
         result = []
         for territory in territories:
             result.extend(self.map.get_adjacent_to(territory))
 
         return list(set(result) - set(territories))
-
-
-    def get_all_adjacent_territories(self, territories: list[int]) -> list[int]:
-        result: set[int] = set()
-        for territory in territories:
-            result |= set(self.map.get_adjacent_to(territory))
-
-        result -= set(territories)
-        return list(result)

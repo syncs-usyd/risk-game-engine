@@ -1,4 +1,4 @@
-from typing import Literal, Tuple, Union
+from typing import Tuple
 from risk_helper.connection import Connection
 from risk_helper.state import State
 from risk_helper.state_mutator import StateMutator
@@ -32,7 +32,7 @@ class Game():
 
     def get_next_query(self) -> QueryType:
         query = self.connection.get_next_query()
-        
+
         for i, record in query.update.items():
             self.mutator.commit(i, record)
 
@@ -43,10 +43,17 @@ class Game():
         self.connection.send_move(move)
 
 
-    def move_attack(self, query: QueryAttack, move: Union[Literal["pass"], MoveAttackDescription]) -> MoveAttack:
+    def move_attack(self, query: QueryAttack, move: MoveAttackDescription) -> MoveAttack:
         return MoveAttack(
             move_by_player=self.state.me.player_id,
             move=move
+        )
+    
+
+    def move_attack_pass(self, query: QueryAttack) -> MoveAttack:
+        return MoveAttack(
+            move_by_player=self.state.me.player_id,
+            move="pass"
         )
 
 
@@ -66,6 +73,8 @@ class Game():
 
 
     def move_distribute_troops(self, query: QueryDistributeTroops, distributions: dict[int, int]) -> MoveDistributeTroops:
+        distributions = dict([(x, y) for x, y in distributions.items() if y > 0])
+        
         return MoveDistributeTroops(
             move_by_player=self.state.me.player_id,
             distributions=distributions
@@ -79,6 +88,17 @@ class Game():
             target_territory=target_territory,
             troop_count=troop_count
         )
+    
+
+    def move_fortify_pass(self, query: QueryFortify) -> MoveFortify:
+        territories = self.state.get_territories_owned_by(self.state.me.player_id)
+        return MoveFortify(
+            move_by_player=self.state.me.player_id,
+            source_territory=territories[0],
+            target_territory=territories[0],
+            troop_count=0
+        )
+
 
 
     def move_place_initial_troop(self, query: QueryPlaceInitialTroop, territory:int) -> MovePlaceInitialTroop:

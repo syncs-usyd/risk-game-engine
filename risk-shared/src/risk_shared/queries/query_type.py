@@ -10,6 +10,6 @@ from risk_shared.queries.query_redeem_cards import QueryRedeemCards
 from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
 
 
-QueryType = Union['QueryAttack', 'QueryClaimTerritory', 'QueryDefend', 
-                  'QueryDistributeTroops', 'QueryFortify', 'QueryPlaceInitialTroop', 
-                  'QueryRedeemCards', 'QueryTroopsAfterAttack']
+QueryType = Union[QueryAttack, QueryClaimTerritory, QueryDefend, 
+                  QueryDistributeTroops, QueryFortify, QueryPlaceInitialTroop, 
+                  QueryRedeemCards, QueryTroopsAfterAttack]

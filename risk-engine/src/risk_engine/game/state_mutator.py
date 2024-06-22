@@ -108,7 +108,6 @@ class StateMutator():
 
 
     def _commit_move_place_initial_troop(self, r: MovePlaceInitialTroop) -> None:
-        self.state.recording.append(r)
         self.state.territories[r.territory].troops += 1
         self.state.players[r.move_by_player].troops_remaining -= 1
 

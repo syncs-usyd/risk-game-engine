@@ -10,7 +10,7 @@ from risk_engine.validation.move_validator import MoveValidator
 from pydantic import ValidationError
 
 from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
-from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, PlayerException, InvalidResponseException, TimeoutException
+from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidMoveException, PlayerException, InvalidMessageException, TimeoutException
 from risk_engine.game.state import State
 from risk_shared.models.player_model import PlayerModel
 from risk_shared.records.types.move_type import MoveType
@@ -32,6 +32,13 @@ from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_fortify import MoveFortify
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.record_start_game import RecordStartGame
+
+
+class InvalidMoveError(ValueError):
+    def __init__(self, message: str, move: MoveType):
+        super().__init__(message)
+        self.invalid_move = move
+
 
 P = ParamSpec("P")
 T1 = TypeVar("T1")
@@ -60,8 +67,9 @@ def handle_invalid(fn: Callable[P, T1]) -> Callable[P, T1]:
         try:
             result = fn(*args, **kwargs)
         except ValidationError as e:
-            raise InvalidResponseException(self.player_id, "You sent an invalid message to the game engine: \n" + e.json(indent=2))
-
+            raise InvalidMessageException(self.player_id, "You sent an invalid message to the game engine: \n" + e.json(indent=2))
+        except InvalidMoveError as e:
+            raise InvalidMoveException(self.player_id, str(e), e.invalid_move)
         return result
     
     return dfn
@@ -132,15 +140,15 @@ class PlayerConnection():
         if buffer[-1] == ord(","):
             size = int(buffer[0:-1].decode())
         else:
-            raise InvalidResponseException(player_id=self.player_id, error_message="Malformed message size on message written to 'to_engine.pipe'.")
+            raise InvalidMessageException(player_id=self.player_id, error_message=f"You send a message with a malformed message size.")
         
         if size > MAX_CHARACTERS_READ:
-            raise InvalidResponseException(player_id=self.player_id, error_message=f"Message size too long for message written to 'to_engine.pipe', {size} > {MAX_CHARACTERS_READ}.")
+            raise InvalidMessageException(player_id=self.player_id, error_message=f"You send a message that was too long, {size} > {MAX_CHARACTERS_READ} maximum.")
         
         # Read message.
         buffer = bytearray()
         while len(buffer) < size:
-            buffer.extend(bytearray(self._to_engine_pipe.read((size - len(buffer)) % READ_CHUNK_SIZE).encode()))
+            buffer.extend(bytearray(self._to_engine_pipe.read(min((size - len(buffer)), READ_CHUNK_SIZE)).encode()))
 
         return buffer.decode()
 
@@ -152,14 +160,17 @@ class PlayerConnection():
         self._send(query.model_dump_json())
 
         move = response_type.model_validate_json(self._receive())
-        validator.validate(move, query, self.player_id)
+        try:
+            validator.validate(move, query, self.player_id)
+        except ValueError as e:
+            raise InvalidMoveError(str(e), move)
         return move
 
 
     def _get_record_update_dict(self, state: State):
         if self._record_update_watermark >= len(state.recording):
             raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
-        result = dict([(i, x.get_censored(self.player_id)) for i, x in enumerate(state.recording[self._record_update_watermark:])])
+        result = dict([(i, x.get_censored(self.player_id)) for i, x in list(enumerate(state.recording))[self._record_update_watermark:]])
         self._record_update_watermark = len(state.recording)
         return result
 

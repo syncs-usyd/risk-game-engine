@@ -1,5 +1,4 @@
 from collections import deque
-import itertools
 import random
 from typing import Tuple, cast
 from risk_helper.game import Game
@@ -41,34 +40,34 @@ def main():
         def choose_move(query: QueryType) -> MoveType:
             match query:
                 case QueryClaimTerritory() as q:
-                    return move_claim_territory(game, q)
+                    return handle_claim_territory(game, q)
 
                 case QueryPlaceInitialTroop() as q:
-                    return move_place_initial_troop(game, q)
+                    return handle_place_initial_troop(game, q)
 
                 case QueryRedeemCards() as q:
-                    return move_redeem_cards(game, q)
+                    return handle_redeem_cards(game, q)
 
                 case QueryDistributeTroops() as q:
-                    return move_distribute_troops(game, q)
+                    return handle_distribute_troops(game, q)
 
                 case QueryAttack() as q:
-                    return move_attack(game, q)
+                    return handle_attack(game, q)
 
                 case QueryTroopsAfterAttack() as q:
-                    return move_troops_after_attack(game, q)
+                    return handle_troops_after_attack(game, q)
 
                 case QueryDefend() as q:
-                    return move_defend(game, q)
+                    return handle_defend(game, q)
 
                 case QueryFortify() as q:
-                    return move_fortify(game, q)
+                    return handle_fortify(game, q)
         
         # Send the move to the engine.
         game.send_move(choose_move(query))
                 
 
-def move_claim_territory(game: Game, query: QueryClaimTerritory) -> MoveClaimTerritory:
+def handle_claim_territory(game: Game, query: QueryClaimTerritory) -> MoveClaimTerritory:
     """At the start of the game, you can claim a single unclaimed territory every turn 
     until all the territories have been claimed by players."""
 
@@ -91,7 +90,7 @@ def move_claim_territory(game: Game, query: QueryClaimTerritory) -> MoveClaimTer
     return game.move_claim_territory(query, selected_territory)
 
 
-def move_place_initial_troop(game: Game, query: QueryPlaceInitialTroop) -> MovePlaceInitialTroop:
+def handle_place_initial_troop(game: Game, query: QueryPlaceInitialTroop) -> MovePlaceInitialTroop:
     """After all the territories have been claimed, you can place a single troop on one
     of your territories each turn until each player runs out of troops."""
     
@@ -108,7 +107,7 @@ def move_place_initial_troop(game: Game, query: QueryPlaceInitialTroop) -> MoveP
     return game.move_place_initial_troop(query, min_troops_territory.territory_id)
 
 
-def move_redeem_cards(game: Game, query: QueryRedeemCards) -> MoveRedeemCards:
+def handle_redeem_cards(game: Game, query: QueryRedeemCards) -> MoveRedeemCards:
     """After the claiming and placing initial troops phases are over, you can redeem any
     cards you have at the start of each turn, or after killing another player."""
 
@@ -134,7 +133,7 @@ def move_redeem_cards(game: Game, query: QueryRedeemCards) -> MoveRedeemCards:
     return game.move_redeem_cards(query, [(x[0].card_id, x[1].card_id, x[2].card_id) for x in card_sets])
 
 
-def move_distribute_troops(game: Game, query: QueryDistributeTroops) -> MoveDistributeTroops:
+def handle_distribute_troops(game: Game, query: QueryDistributeTroops) -> MoveDistributeTroops:
     """After you redeem cards (you may have chosen to not redeem any), you need to distribute
     all the troops you have available across your territories. This can happen at the start of
     your turn or after killing another player.
@@ -158,16 +157,16 @@ def move_distribute_troops(game: Game, query: QueryDistributeTroops) -> MoveDist
     return game.move_distribute_troops(query, distributions)
 
 
-def move_attack(game: Game, query: QueryAttack) -> MoveAttack:
+def handle_attack(game: Game, query: QueryAttack) -> MoveAttack:
     """After the troop phase of your turn, you may attack any number of times until you decide to
     stop attacking (by passing). After a successful attack, you may move troops into the conquered
     territory. If you eliminated a player you will get a move to redeem cards and then distribute troops."""
     
     # We are pacifists rn.
-    return game.move_attack(query, "pass")
+    return game.move_attack_pass(query)
 
 
-def move_troops_after_attack(game: Game, query: QueryTroopsAfterAttack) -> MoveTroopsAfterAttack:
+def handle_troops_after_attack(game: Game, query: QueryTroopsAfterAttack) -> MoveTroopsAfterAttack:
     """After conquering a territory in an attack, you must move troops to the new territory."""
     
     # First we need to get the record that describes the attack, and then the move that specifies
@@ -180,7 +179,7 @@ def move_troops_after_attack(game: Game, query: QueryTroopsAfterAttack) -> MoveT
     return game.move_troops_after_attack(query, min(0, game.state.territories[move_attack.move.attacking_territory].troops - 1))
 
 
-def move_defend(game: Game, query: QueryDefend) -> MoveDefend:
+def handle_defend(game: Game, query: QueryDefend) -> MoveDefend:
     """If you are being attacked by another player, you must choose how many troops to defend with."""
 
     # We will always defend with the most troops that we can.
@@ -196,7 +195,7 @@ def move_defend(game: Game, query: QueryDefend) -> MoveDefend:
     return game.move_defend(query, defending_troops)
 
 
-def move_fortify(game: Game, query: QueryFortify) -> MoveFortify:
+def handle_fortify(game: Game, query: QueryFortify) -> MoveFortify:
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
     any two of your territories (they must be adjacent)."""
 
@@ -209,14 +208,18 @@ def move_fortify(game: Game, query: QueryFortify) -> MoveFortify:
 
     most_powerful_player = max(total_troops_per_player.items(), key=lambda x: x[1])[0]
 
-    # If we are the most powerful, we will pass our turn by moving zero troops from one of our territories to itself.
+    # If we are the most powerful, we will pass.
     if most_powerful_player == game.state.me.player_id:
-        territory = my_territories[0]
-        return game.move_fortify(query, territory, territory, 0)
+        return game.move_fortify_pass(query)
     
     # Otherwise we will find the shortest path between our non-border territory with the most troops
     # and any of the most powerful player's territories and fortify along that path.
     candidate_territories = list(set(my_territories) - set(game.state.get_all_border_territories(my_territories)))
+    
+    # If there are no non-border territories we will pass.
+    if len(candidate_territories) == 0:
+        return game.move_fortify_pass(query)
+
     most_troops_territory = max(candidate_territories, key=lambda x: game.state.territories[x].troops)
 
     # To find the shortest path, we will use a custom function.
@@ -227,9 +230,7 @@ def move_fortify(game: Game, query: QueryFortify) -> MoveFortify:
     if game.state.territories[most_troops_territory].troops > 1:
         return game.move_fortify(query, shortest_path[0], shortest_path[1], game.state.territories[most_troops_territory].troops - 1)
     else:
-        # Pass our turn.
-        territory = my_territories[0]
-        return game.move_fortify(query, territory, territory, 0)
+        return game.move_fortify_pass(query)
 
 
 def find_shortest_path_from_vertex_to_set(game: Game, source: int, target_set: set[int]) -> list[int]:
