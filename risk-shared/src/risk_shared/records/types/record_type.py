@@ -1,6 +1,7 @@
 
 from typing import Union
 
+from risk_shared.records.record_cancelled import RecordCancelled
 from risk_shared.records.types.move_type import MoveType
 from risk_shared.records.record_attack import RecordAttack
 from risk_shared.records.record_banned import RecordBanned
@@ -18,4 +19,4 @@ RecordType = Union[RecordAttack, PublicRecordDrewCard, RecordDrewCard,
                     PublicRecordPlayerEliminated, RecordPlayerEliminated,
                     RecordRedeemedCards, RecordShuffledCards, RecordStartGame, 
                     PublicRecordStartGame, RecordStartTurn, RecordTerritoryConquered, 
-                    RecordBanned, RecordWinner, MoveType]
+                    RecordBanned, RecordCancelled, RecordWinner, MoveType]

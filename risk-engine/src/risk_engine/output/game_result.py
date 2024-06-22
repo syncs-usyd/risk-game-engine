@@ -16,3 +16,4 @@ class GameSuccessResult(BaseModel):
 
 class GameCancelledResult(BaseModel):
     result_type: Literal["CANCELLED"] = "CANCELLED"
+    reason: str

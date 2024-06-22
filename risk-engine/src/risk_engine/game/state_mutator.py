@@ -11,6 +11,7 @@ from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 from risk_shared.records.record_attack import RecordAttack
 from risk_shared.records.record_banned import RecordBanned
+from risk_shared.records.record_cancelled import RecordCancelled
 from risk_shared.records.record_drew_card import RecordDrewCard
 from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
 from risk_shared.records.record_redeemed_cards import RecordRedeemedCards
@@ -67,6 +68,8 @@ class StateMutator():
                 self._commit_record_territory_conquered(r)
             case RecordWinner() as r:
                 self._commit_record_winner(r)
+            case RecordCancelled() as r:
+                self._commit_record_cancelled(r)
             case _:
                 raise NotImplementedError
             
@@ -225,4 +228,8 @@ class StateMutator():
 
 
     def _commit_record_winner(self, r: RecordWinner) -> None:
+        pass
+
+
+    def _commit_record_cancelled(self, r: RecordCancelled) -> None:
         pass

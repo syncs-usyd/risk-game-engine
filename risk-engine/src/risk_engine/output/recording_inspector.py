@@ -3,8 +3,9 @@
 from typing import Iterable, Union
 
 from pydantic import BaseModel, RootModel
-from risk_engine.output.game_result import GameBanResult, GameSuccessResult
+from risk_engine.output.game_result import GameBanResult, GameCancelledResult, GameSuccessResult
 from risk_shared.records.record_banned import RecordBanned
+from risk_shared.records.record_cancelled import RecordCancelled
 from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
 from risk_shared.records.record_winner import RecordWinner
 from risk_shared.records.types.record_type import RecordType
@@ -28,8 +29,10 @@ class RecordingInspector():
         return ranking[::-1]
 
 
-    def get_result(self) -> Union[GameBanResult, GameSuccessResult]:
+    def get_result(self) -> Union[GameBanResult, GameSuccessResult, GameCancelledResult]:
         match self.recording[-1]:
+            case RecordCancelled() as x:
+                return GameCancelledResult(reason=x.reason)
             case RecordBanned() as x:
                 return GameBanResult(result_type=x.ban_type, player=x.player, reason=x.reason)
             case RecordWinner() as x:

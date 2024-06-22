@@ -10,10 +10,11 @@ from risk_engine.exceptions import PlayerException
 from risk_engine.game.record_factory import record_attack_factory, record_banned_factory, record_drew_card_factory, record_player_eliminated_factory, record_start_turn_factory
 from risk_engine.game.state import State
 from risk_engine.game.state_mutator import StateMutator
-from risk_engine.output.game_result import GameBanResult, GameSuccessResult
+from risk_engine.output.game_result import GameBanResult, GameCancelledResult, GameSuccessResult
 from risk_engine.output.recording_inspector import RecordingInspector
 from risk_engine.validation.move_validator import MoveValidator
 from risk_shared.models.player_model import PlayerModel
+from risk_shared.records.record_cancelled import RecordCancelled
 from risk_shared.records.record_shuffled_cards import RecordShuffledCards
 from risk_shared.records.record_start_game import RecordStartGame
 from risk_shared.records.record_territory_conquered import RecordTerritoryConquered
@@ -82,7 +83,8 @@ class GameEngine:
                     f.write("Your submission.log file is either missing or is a directory.")
 
 
-        # Only copy for the player who was banned, otherwise copy for all players.
+        # Only copy for the player who was banned, otherwise copy for all players, or only copy the log
+        # if the match was cancelled.
         match result:
             case GameBanResult() as x:
                 copy_stdout_stderr_player(player=x.player)
@@ -90,6 +92,9 @@ class GameEngine:
             case GameSuccessResult():
                 for player in self.state.players.keys():
                     copy_stdout_stderr_player(player)
+
+            case GameCancelledResult():
+                pass
 
 
     def _run_game(self):
@@ -111,7 +116,13 @@ class GameEngine:
 
         # Run the main game.
         turn_order = deque(self.state.turn_order.copy())
-        while len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1 and len(self.state.recording) < MAX_GAME_RECORDING_SIZE:
+        cancelled = False
+        while len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1:
+
+            if len(self.state.recording) >= MAX_GAME_RECORDING_SIZE:
+                cancelled = True
+                break
+
             
             player, connection = get_next_turn(self.state, self.connections, turn_order)
             if not player.alive: continue
@@ -120,10 +131,16 @@ class GameEngine:
             self._attack_phase(player, connection)
             self._fortify_phase(player, connection)
 
-        # Emit RecordWinner.
-        winner = filter(lambda x: x.alive == True, self.state.players.values()).__next__().player_id
-        record = RecordWinner(player=winner)
-        self.mutator.commit(record)
+        # If the game was terminated due to taking too long, cancel the match.
+        if cancelled:
+            record = RecordCancelled(reason=f"Game exceeded maximum recording (recording was {len(self.state.recording)} records long).")
+            self.mutator.commit(record)
+
+        else:
+            # Emit RecordWinner.
+            winner = filter(lambda x: x.alive == True, self.state.players.values()).__next__().player_id
+            record = RecordWinner(player=winner)
+            self.mutator.commit(record)
 
 
 
@@ -216,12 +233,13 @@ class GameEngine:
 
         # If the player conquered any territories this turn, they draw a card.
         # Shuffle the deck first if necessary.
-        if len(self.state.deck) == 0:
-            record = RecordShuffledCards()
+        if conquered_territory:
+            if len(self.state.deck) == 0:
+                record = RecordShuffledCards()
+                self.mutator.commit(record)
+            
+            record = record_drew_card_factory(self.state, player.player_id)
             self.mutator.commit(record)
-        
-        record = record_drew_card_factory(self.state, player.player_id)
-        self.mutator.commit(record)
 
 
     def _fortify_phase(self, player: PlayerModel, connection: PlayerConnection):
