@@ -21,7 +21,7 @@ from risk_shared.queries.query_place_initial_troop import QueryPlaceInitialTroop
 from risk_shared.queries.query_attack import QueryAttack
 from risk_shared.queries.query_distribute_troops import QueryDistributeTroops
 from risk_shared.queries.query_redeem_cards import QueryRedeemCards
-from risk_shared.queries.query_fortify import QueryFortifyTerritory
+from risk_shared.queries.query_fortify import QueryFortify
 from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
@@ -116,7 +116,7 @@ class PlayerConnection():
         self._from_engine_pipe = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/from_engine.pipe", "w")
 
 
-    def _send(self, data: str):
+    def _send(self, data: str) -> None:
         self._from_engine_pipe.write(str(len(data)) + ",")
         self._from_engine_pipe.write(data)
         self._from_engine_pipe.flush()
@@ -200,7 +200,7 @@ class PlayerConnection():
     
 
     def query_fortify(self, state: State, validator: MoveValidator) -> MoveFortify:
-        query = QueryFortifyTerritory(update=self._get_record_update_dict(state))
+        query = QueryFortify(update=self._get_record_update_dict(state))
         return self._query_move(query, MoveFortify, validator) 
 
 

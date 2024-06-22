@@ -6,6 +6,7 @@ from risk_shared.records.types.record_type import RecordType
 
 
 class State():
+
     def __init__(self):
         self.map = earth.create_map()
         self.cards = earth.create_cards()
@@ -17,3 +18,5 @@ class State():
         self.turn_order: list[int] = []
         self.recording: list[RecordType] = []
         self.me: PlayerModel
+
+    

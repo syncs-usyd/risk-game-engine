@@ -27,7 +27,9 @@ class StateMutator():
         self.state = state
 
 
-    def commit(self, record: RecordType):
+    def commit(self, i: int, record: RecordType):
+        if i != len(self.state.recording):
+            raise RuntimeError("Please send us a discord message with this error log.")
         self.state.recording.append(record)
 
         match record:
@@ -153,10 +155,6 @@ class StateMutator():
 
         # Place the redeemed cards in the discarded deck.
         self.state.discarded_deck.extend([self.state.cards[i] for i in all_cards])
-        
-        # Emit a RecordRedeemedCards.
-        record = RecordRedeemedCards(redeem_cards_move=len(self.state.recording) - 1, total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
-        self.commit(record)
 
 
     def _commit_move_troops_after_attack(self, r: MoveTroopsAfterAttack) -> None:
@@ -245,6 +243,8 @@ class StateMutator():
 
     def _commit_public_record_start_game(self, r: PublicRecordStartGame) -> None:
         self.state.turn_order = list(r.turn_order).copy()
+        self.players = dict([(x.player_id, x) for x in r.players])
+        self.state.me = r.you
 
 
     def _commit_record_start_turn(self, r: RecordStartTurn) -> None:
