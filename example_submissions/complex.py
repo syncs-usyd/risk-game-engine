@@ -131,9 +131,7 @@ def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards
         card_set = game.state.get_card_set(cards_remaining)
         # According to the pigeonhole principle, we should always be able to make a set
         # of cards if we have at least 5 cards.
-        if card_set == None:
-            print(cards_remaining)
-            assert False
+        assert card_set != None
         card_sets.append(card_set)
 
         cards_remaining = [card for card in cards_remaining if card not in card_set]
