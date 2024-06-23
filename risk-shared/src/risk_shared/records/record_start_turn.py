@@ -9,6 +9,3 @@ class RecordStartTurn(BaseRecord):
     territories_held: int
     continent_bonus: int
     territory_bonus: int
-
-    def get_censored(self, player_id: int):
-        return self

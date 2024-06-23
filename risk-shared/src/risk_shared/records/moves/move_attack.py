@@ -12,7 +12,3 @@ class MoveAttackDescription(BaseModel):
 class MoveAttack(BaseMove):
     record_type: Literal["move_attack"] = "move_attack"
     move: Union[MoveAttackDescription, Literal["pass"]]
-
-    def get_censored(self, player_id: int):
-        return self
-    

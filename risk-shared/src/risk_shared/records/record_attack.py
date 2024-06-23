@@ -10,6 +10,3 @@ class RecordAttack(BaseRecord):
     defending_troops_lost: int
     territory_conquered: bool
     defender_eliminated: bool
-
-    def get_censored(self, player_id: int):
-        return self

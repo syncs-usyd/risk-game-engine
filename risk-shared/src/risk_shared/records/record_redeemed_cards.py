@@ -7,6 +7,3 @@ class RecordRedeemedCards(BaseRecord):
     redeem_cards_move: int
     total_set_bonus: int
     matching_territory_bonus: int
-
-    def get_censored(self, player_id: int):
-        return self

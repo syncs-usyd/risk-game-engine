@@ -3,12 +3,13 @@ import shutil
 from typing import Tuple
 from collections import deque
 
+from risk_engine.censoring.censor_record import CensorRecord
 from risk_engine.config.gameconfig import MAX_GAME_RECORDING_SIZE
 from risk_engine.config.ioconfig import CORE_DIRECTORY
 from risk_engine.connection.player_connection import PlayerConnection
 from risk_engine.exceptions import PlayerException
 from risk_engine.game.record_factory import record_attack_factory, record_banned_factory, record_drew_card_factory, record_player_eliminated_factory, record_start_turn_factory
-from risk_engine.game.state import State
+from risk_engine.game.engine_state import EngineState
 from risk_engine.game.state_mutator import StateMutator
 from risk_engine.output.game_result import GameBanResult, GameCancelledResult, GameSuccessResult
 from risk_engine.output.recording_inspector import RecordingInspector
@@ -20,7 +21,7 @@ from risk_shared.records.record_start_game import RecordStartGame
 from risk_shared.records.record_territory_conquered import RecordTerritoryConquered
 from risk_shared.records.record_winner import RecordWinner
 
-def get_next_turn(state: State, connections: dict[int, PlayerConnection], turn_order: deque[int]) -> Tuple[PlayerModel, PlayerConnection]:
+def get_next_turn(state: EngineState, connections: dict[int, PlayerConnection], turn_order: deque[int]) -> Tuple[PlayerModel, PlayerConnection]:
         player_id = turn_order.pop()
         turn_order.appendleft(player_id)
         player = state.players[player_id]
@@ -31,9 +32,10 @@ def get_next_turn(state: State, connections: dict[int, PlayerConnection], turn_o
 
 class GameEngine:
     def __init__(self):
-        self.state = State()
+        self.state = EngineState()
         self.mutator = StateMutator(self.state)
         self.validator = MoveValidator(self.state)
+        self.censor = CensorRecord(self.state)
         self.connections: dict[int, PlayerConnection]
 
     def start(self):
@@ -103,7 +105,7 @@ class GameEngine:
         turn_order = list(self.state.players.keys())
         random.shuffle(turn_order)
         self.state.turn_order = turn_order
-        record_start_game = RecordStartGame(turn_order=self.state.turn_order.copy(), players=list(self.state.players.values()))
+        record_start_game = RecordStartGame(turn_order=self.state.turn_order.copy(), players=[PlayerModel.model_validate(x.model_dump()) for x in self.state.players.values()])
         self.mutator.commit(record_start_game)
 
         # Emit RecordShuffledCards.
@@ -149,7 +151,7 @@ class GameEngine:
 
         while len(list(filter(lambda x: x.occupier == None, self.state.territories.values()))) > 0:
             player, connection = get_next_turn(self.state, self.connections, turn_order)
-            response = connection.query_claim_territory(self.state, self.validator)
+            response = connection.query_claim_territory(self.state, self.validator, self.censor)
             self.mutator.commit(response)
 
 
@@ -162,7 +164,7 @@ class GameEngine:
             if player.troops_remaining == 0:
                 continue
 
-            response = connection.query_place_initial_troop(self.state, self.validator)
+            response = connection.query_place_initial_troop(self.state, self.validator, self.censor)
             self.mutator.commit(response)
 
 
@@ -173,11 +175,11 @@ class GameEngine:
         self.mutator.commit(record)
 
         # Let the player redeem cards.
-        response = connection.query_redeem_cards(self.state, self.validator, cause="turn_started")
+        response = connection.query_redeem_cards(self.state, self.validator, self.censor, cause="turn_started")
         self.mutator.commit(response)
 
         # Let the player distribute troops.
-        response = connection.query_distribute_troops(self.state, self.validator, cause="turn_started")
+        response = connection.query_distribute_troops(self.state, self.validator, self.censor, cause="turn_started")
         self.mutator.commit(response)
 
 
@@ -187,7 +189,7 @@ class GameEngine:
         while (True):
 
             # Get the attack move.
-            attack = connection.query_attack(self.state, self.validator)
+            attack = connection.query_attack(self.state, self.validator, self.censor)
             self.mutator.commit(attack)
             move_attack_id = len(self.state.recording) - 1
 
@@ -200,7 +202,7 @@ class GameEngine:
                 raise RuntimeError("Tried to attack unoccupied territory.")
 
             # Get the defend move.
-            defend = self.connections[defending_player].query_defend(self.state, self.validator, move_attack_id)
+            defend = self.connections[defending_player].query_defend(self.state, self.validator, self.censor, move_attack_id)
             self.mutator.commit(defend)
             move_defend_id = len(self.state.recording) - 1
 
@@ -216,7 +218,7 @@ class GameEngine:
                 record = RecordTerritoryConquered(record_attack_id=record_attack_id)
                 self.mutator.commit(record)
 
-                response = connection.query_troops_after_attack(self.state, self.validator, record_attack_id)
+                response = connection.query_troops_after_attack(self.state, self.validator, self.censor, record_attack_id)
                 self.mutator.commit(response)
 
             # Emit a RecordPlayerEliminated and then allow player to redeem cards and distribute troops if required.
@@ -225,10 +227,10 @@ class GameEngine:
                 self.mutator.commit(record)
 
                 if len(player.cards) > 6:
-                    response = connection.query_redeem_cards(self.state, self.validator, cause="player_eliminated")
+                    response = connection.query_redeem_cards(self.state, self.validator, self.censor, cause="player_eliminated")
                     self.mutator.commit(response)
 
-                    response = connection.query_distribute_troops(self.state, self.validator, cause="player_eliminated")
+                    response = connection.query_distribute_troops(self.state, self.validator, self.censor, cause="player_eliminated")
                     self.mutator.commit(response)
 
         # If the player conquered any territories this turn, they draw a card.
@@ -243,6 +245,6 @@ class GameEngine:
 
 
     def _fortify_phase(self, player: PlayerModel, connection: PlayerConnection):
-        response = connection.query_fortify(self.state, self.validator)
+        response = connection.query_fortify(self.state, self.validator, self.censor)
         self.mutator.commit(response)
         

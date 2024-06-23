@@ -7,7 +7,7 @@ from risk_shared.models.territory_model import TerritoryModel
 from risk_shared.records.types.record_type import RecordType
 
 
-class State():
+class ClientState():
 
     def __init__(self):
         self.map = earth.create_map()
@@ -19,6 +19,7 @@ class State():
         self.card_sets_redeemed: int = 0
         self.turn_order: list[int] = []
         self.recording: list[RecordType] = []
+        self.new_records: int = 0
         self.me: PlayerModel
 
 
@@ -40,7 +41,7 @@ class State():
             if symbol == "Wildcard":
                 continue
 
-            if len(_cards) == 3:
+            if len(_cards) >= 3:
                 return (_cards[0], _cards[1], _cards[2])
             elif len(_cards) == 2 and len(cards_by_symbol["Wildcard"]) >= 1:
                 return (_cards[0], _cards[1], cards_by_symbol["Wildcard"][0])

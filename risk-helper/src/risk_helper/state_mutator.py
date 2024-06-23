@@ -1,5 +1,5 @@
 from typing import TypeGuard, cast
-from risk_helper.state import State
+from risk_helper.client_state import ClientState
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
@@ -23,7 +23,7 @@ from risk_shared.records.types.record_type import RecordType
 
 class StateMutator():
 
-    def __init__(self, state: State):
+    def __init__(self, state: ClientState):
         self.state = state
 
 
@@ -260,11 +260,12 @@ class StateMutator():
 
 
     def _commit_record_territory_conquered(self, r: RecordTerritoryConquered) -> None:
-        move_attack_obj = cast(MoveAttack, self.state.recording[r.record_attack_id])
-        if move_attack_obj.move == "pass":
+        record_attack = cast(RecordAttack, self.state.recording[r.record_attack_id])
+        move_attack = cast(MoveAttack, self.state.recording[record_attack.move_attack_id])
+        if move_attack.move == "pass":
             raise RuntimeError("Please send us a discord message with this error log.")
 
-        defending_territory = move_attack_obj.move.defending_territory
+        defending_territory = move_attack.move.defending_territory
 
         self.state.territories[defending_territory].troops = 0
-        self.state.territories[defending_territory].occupier = move_attack_obj.move_by_player
+        self.state.territories[defending_territory].occupier = move_attack.move_by_player

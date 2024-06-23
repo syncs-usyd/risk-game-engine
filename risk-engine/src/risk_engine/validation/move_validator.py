@@ -1,5 +1,5 @@
 from typing import cast
-from risk_engine.game.state import State
+from risk_engine.game.engine_state import EngineState
 from risk_shared.models.card_model import CardModel
 from risk_shared.queries.base_query import BaseQuery
 from risk_shared.queries.query_defend import QueryDefend
@@ -20,7 +20,7 @@ from risk_shared.records.types.move_type import MoveType
 
 class MoveValidator():
 
-    def __init__(self, state: State):
+    def __init__(self, state: EngineState):
         self.state = state
 
     def validate(self, record: MoveType, query: BaseQuery, player: int) -> None:
@@ -153,7 +153,6 @@ class MoveValidator():
             raise ValueError(f"You tried to move {r.troop_count} troops, you must move between zero and the number of troops in the source territory, subtracting one troop which must be left behind.")
 
 
-
     def _validate_move_place_initial_troop(self, r: MovePlaceInitialTroop, query: BaseQuery, player: int) -> None:
         if not r.territory in self.state.territories:
             raise ValueError(f"You tried to claim a nonexistant territory with id {r.territory}.")
@@ -175,7 +174,7 @@ class MoveValidator():
 
             unique_symbols = set(map(lambda x: x.symbol, cards))
             unique_symbols_count = len(unique_symbols)
-            if not (unique_symbols_count == 3 or unique_symbols_count == 1) or (unique_symbols_count == 2 and "Wildcard" in unique_symbols):
+            if not ((unique_symbols_count == 3 or unique_symbols_count == 1) or (unique_symbols_count == 2 and "Wildcard" in unique_symbols)):
                 raise ValueError(f"You tried to redeem a set of cards {cards[0].symbol}, {cards[1].symbol}, {cards[2].symbol}, which is not a set.")
 
         def check_owns_cards(cards):
@@ -220,7 +219,7 @@ class MoveValidator():
         if not minimum_troops_moved <= r.troop_count:
             raise ValueError("You must move troops from the attacking territory to the defending territory after a successful attack, depending on how many troops were committed and how many died.")
         
-        if not r.troop_count <= cast(int, self.state.territories[move_attack.move.attacking_territory]) - 1:
+        if not r.troop_count <= self.state.territories[move_attack.move.attacking_territory].troops - 1:
             raise ValueError(f"You tried to move too many troops from territory {move_attack.move.attacking_territory}.")
 
 

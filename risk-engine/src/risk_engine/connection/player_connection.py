@@ -1,18 +1,22 @@
 from io import TextIOWrapper
+import json
 import math
 import random
 from signal import SIGALRM, alarm, signal
 from time import time
-from typing import Callable, Literal, ParamSpec, Type, TypeVar, Union, final
+from typing import Callable, Literal, Optional, ParamSpec, Type, TypeVar, Union, final
 
+from risk_engine.censoring.censor_record import CensorRecord
 from risk_engine.game.state_mutator import StateMutator
 from risk_engine.validation.move_validator import MoveValidator
 from pydantic import ValidationError
 
 from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidMoveException, PlayerException, InvalidMessageException, TimeoutException
-from risk_engine.game.state import State
+from risk_engine.game.engine_state import EngineState
 from risk_shared.models.player_model import PlayerModel
+from risk_shared.queries.query_type import QueryType
+from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 from risk_shared.records.types.move_type import MoveType
 from risk_shared.queries.base_query import BaseQuery
 from risk_shared.queries.query_claim_territory import QueryClaimTerritory
@@ -67,7 +71,7 @@ def handle_invalid(fn: Callable[P, T1]) -> Callable[P, T1]:
         try:
             result = fn(*args, **kwargs)
         except ValidationError as e:
-            raise InvalidMessageException(self.player_id, "You sent an invalid message to the game engine: \n" + e.json(indent=2))
+            raise InvalidMessageException(self.player_id, "You sent an invalid message to the game engine.", json.loads(e.json()))
         except InvalidMoveError as e:
             raise InvalidMoveException(self.player_id, str(e), e.invalid_move)
         return result
@@ -82,8 +86,12 @@ def time_limited(error_message: str = "You took too long to respond."):
     def dfn1(fn: Callable[P, T1]):
         def dfn2(*args: P.args, **kwargs: P.kwargs) -> T1:
             self: 'PlayerConnection' = args[0]  # type: ignore
+            query: Optional[QueryType] = None
+            if len(args) >= 2 and isinstance(args[1], BaseQuery):
+                query = args[1]   # type: ignore
+
             def on_timeout_alarm(*_):
-                raise TimeoutException(self.player_id, error_message)
+                raise TimeoutException(self.player_id, error_message, query)
             signal(SIGALRM, on_timeout_alarm)
 
             alarm(TIMEOUT_SECONDS)
@@ -96,7 +104,7 @@ def time_limited(error_message: str = "You took too long to respond."):
 
             self._cumulative_time += end - start
             if self._cumulative_time > CUMULATIVE_TIMEOUT_SECONDS:
-                raise CumulativeTimeoutException(self.player_id, error_message)
+                raise CumulativeTimeoutException(self.player_id, error_message, query)
             
             return result
 
@@ -156,7 +164,7 @@ class PlayerConnection():
     @handle_invalid
     @handle_sigpipe
     @time_limited()
-    def _query_move(self, query: BaseQuery, response_type: Type[T2], validator: MoveValidator) -> T2:
+    def _query_move(self, query: QueryType, response_type: Type[T2], validator: MoveValidator) -> T2:
         self._send(query.model_dump_json())
 
         move = response_type.model_validate_json(self._receive())
@@ -167,58 +175,59 @@ class PlayerConnection():
         return move
 
 
-    def _get_record_update_dict(self, state: State):
+    def _get_record_update_dict(self, state: EngineState, censor: CensorRecord):
         if self._record_update_watermark >= len(state.recording):
             raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
-        result = dict([(i, x.get_censored(self.player_id)) for i, x in list(enumerate(state.recording))[self._record_update_watermark:]])
+        result = dict([(i, censor.censor(x, self.player_id)) for i, x in list(enumerate(state.recording))[self._record_update_watermark:]])
         self._record_update_watermark = len(state.recording)
         return result
 
 
-    def query_claim_territory(self, state: State, validator: MoveValidator) -> MoveClaimTerritory:
-        query = QueryClaimTerritory(update=self._get_record_update_dict(state))
+    def query_claim_territory(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> MoveClaimTerritory:
+        query = QueryClaimTerritory(update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MoveClaimTerritory, validator)
 
 
-    def query_place_initial_troop(self, state: State, validator: MoveValidator) -> MovePlaceInitialTroop:
-        query = QueryPlaceInitialTroop(update=self._get_record_update_dict(state))
+    def query_place_initial_troop(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> MovePlaceInitialTroop:
+        query = QueryPlaceInitialTroop(update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MovePlaceInitialTroop, validator)
 
 
-    def query_attack(self, state: State, validator: MoveValidator) -> MoveAttack:
-        query = QueryAttack(update=self._get_record_update_dict(state))
+    def query_attack(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> MoveAttack:
+        query = QueryAttack(update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MoveAttack, validator)
 
 
-    def query_defend(self, state: State, validator: MoveValidator, move_attack_id: int) -> MoveDefend:
-        query = QueryDefend(move_attack_id=move_attack_id, update=self._get_record_update_dict(state))
+    def query_defend(self, state: EngineState, validator: MoveValidator, censor: CensorRecord, move_attack_id: int) -> MoveDefend:
+        query = QueryDefend(move_attack_id=move_attack_id, update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MoveDefend, validator)
     
 
-    def query_troops_after_attack(self, state: State, validator: MoveValidator, record_attack_id: int) -> MoveDefend:
-        query = QueryTroopsAfterAttack(record_attack_id=record_attack_id, update=self._get_record_update_dict(state))
-        return self._query_move(query, MoveDefend, validator)
+    def query_troops_after_attack(self, state: EngineState, validator: MoveValidator, censor: CensorRecord, record_attack_id: int) -> MoveTroopsAfterAttack:
+        query = QueryTroopsAfterAttack(record_attack_id=record_attack_id, update=self._get_record_update_dict(state, censor))
+        return self._query_move(query, MoveTroopsAfterAttack, validator)
         
 
-    def query_distribute_troops(self, state: State, validator: MoveValidator, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveDistributeTroops:
-        query = QueryDistributeTroops(cause=cause, update=self._get_record_update_dict(state))
+    def query_distribute_troops(self, state: EngineState, validator: MoveValidator, censor: CensorRecord, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveDistributeTroops:
+        query = QueryDistributeTroops(cause=cause, update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MoveDistributeTroops, validator) 
     
 
-    def query_redeem_cards(self, state: State, validator: MoveValidator, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveRedeemCards:
-        query = QueryRedeemCards(cause=cause, update=self._get_record_update_dict(state))
+    def query_redeem_cards(self, state: EngineState, validator: MoveValidator, censor: CensorRecord, cause: Union[Literal["turn_started"], Literal["player_eliminated"]]) -> MoveRedeemCards:
+        query = QueryRedeemCards(cause=cause, update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MoveRedeemCards, validator) 
     
 
-    def query_fortify(self, state: State, validator: MoveValidator) -> MoveFortify:
-        query = QueryFortify(update=self._get_record_update_dict(state))
+    def query_fortify(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> MoveFortify:
+        query = QueryFortify(update=self._get_record_update_dict(state, censor))
         return self._query_move(query, MoveFortify, validator) 
 
 
 if __name__ == "__main__":
-    state = State()
+    state = EngineState()
     mutator = StateMutator(state)
     validator = MoveValidator(state)
+    censor = CensorRecord(state)
     connection = PlayerConnection(player_id=0)
     players = [PlayerModel(player_id=0, troops_remaining=25, alive=True, cards=[], must_place_territory_bonus=[])]
 
@@ -229,7 +238,7 @@ if __name__ == "__main__":
 
 
     try:
-        response = connection.query_claim_territory(state, validator)
+        response = connection.query_claim_territory(state, validator, censor)
         mutator.commit(response)
         print(state.territories)
     except PlayerException as e:

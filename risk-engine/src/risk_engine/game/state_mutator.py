@@ -1,6 +1,6 @@
 import random
 from typing import TypeGuard, cast
-from risk_engine.game.state import State
+from risk_engine.game.engine_state import EngineState
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
@@ -25,7 +25,7 @@ from risk_shared.records.types.record_type import RecordType
 
 class StateMutator():
 
-    def __init__(self, state: State):
+    def __init__(self, state: EngineState):
         self.state = state
 
     def commit(self, record: RecordType):
@@ -217,14 +217,15 @@ class StateMutator():
 
 
     def _commit_record_territory_conquered(self, r: RecordTerritoryConquered) -> None:
-        move_attack_obj = cast(MoveAttack, self.state.recording[r.record_attack_id])
-        if move_attack_obj.move == "pass":
+        record_attack = cast(RecordAttack, self.state.recording[r.record_attack_id])
+        move_attack = cast(MoveAttack, self.state.recording[record_attack.move_attack_id])
+        if move_attack.move == "pass":
             raise RuntimeError("Tried to record territory conquered for attack that was a pass.")
 
-        defending_territory = move_attack_obj.move.defending_territory
+        defending_territory = move_attack.move.defending_territory
 
         self.state.territories[defending_territory].troops = 0
-        self.state.territories[defending_territory].occupier = move_attack_obj.move_by_player
+        self.state.territories[defending_territory].occupier = move_attack.move_by_player
 
 
     def _commit_record_winner(self, r: RecordWinner) -> None:

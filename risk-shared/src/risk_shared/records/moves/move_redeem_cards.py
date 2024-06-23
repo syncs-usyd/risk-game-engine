@@ -8,9 +8,6 @@ class MoveRedeemCards(BaseMove):
     sets: list[Tuple[int, int, int]]
     cause: Union[Literal["turn_started"], Literal["player_eliminated"]]
 
-    def get_censored(self, player_id: int):
-        return self
-
 
 
 

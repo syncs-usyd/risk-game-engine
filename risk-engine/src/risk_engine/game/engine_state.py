@@ -6,7 +6,7 @@ from risk_shared.models.card_model import CardModel
 from risk_shared.models.player_model import PlayerModel
 from risk_shared.records.types.record_type import RecordType
 
-class State():
+class EngineState():
     def __init__(self):
         self.map: Map = earth.create_map()
         self.cards: dict[int, CardModel] = dict([(i, card) for i, card in earth.create_cards().items()])

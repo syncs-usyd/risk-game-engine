@@ -8,16 +8,8 @@ class RecordDrewCard(BaseRecord):
     player: int
     card: CardModel
 
-    def get_censored(self, player_id: int):
-        if self.player == player_id:
-            return self
-        return PublicRecordDrewCard(player=self.player)
-
 
 @final
 class PublicRecordDrewCard(BaseRecord):
     record_type: Literal["public_record_drew_card"] = "public_record_drew_card"
     player: int
-
-    def get_censored(self, player_id: int):
-        return self

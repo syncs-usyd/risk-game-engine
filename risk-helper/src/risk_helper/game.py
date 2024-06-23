@@ -1,6 +1,6 @@
 from typing import Tuple
 from risk_helper.connection import Connection
-from risk_helper.state import State
+from risk_helper.client_state import ClientState
 from risk_helper.state_mutator import StateMutator
 from risk_shared.queries.query_attack import QueryAttack
 from risk_shared.queries.query_claim_territory import QueryClaimTerritory
@@ -25,7 +25,7 @@ from risk_shared.records.types.move_type import MoveType
 class Game():
 
     def __init__(self):
-        self.state = State()
+        self.state = ClientState()
         self.mutator = StateMutator(self.state)
         self.connection = Connection()
 
@@ -33,8 +33,10 @@ class Game():
     def get_next_query(self) -> QueryType:
         query = self.connection.get_next_query()
 
+        new_records_mark = len(self.state.recording)
         for i, record in query.update.items():
             self.mutator.commit(i, record)
+        self.state.new_records = new_records_mark
 
         return query
     
@@ -43,10 +45,14 @@ class Game():
         self.connection.send_move(move)
 
 
-    def move_attack(self, query: QueryAttack, move: MoveAttackDescription) -> MoveAttack:
+    def move_attack(self, query: QueryAttack, attacking_territory: int, defending_territory: int, attacking_troops: int) -> MoveAttack:
         return MoveAttack(
             move_by_player=self.state.me.player_id,
-            move=move
+            move=MoveAttackDescription(
+                attacking_territory=attacking_territory,
+                defending_territory=defending_territory,
+                attacking_troops=attacking_troops
+            )
         )
     
 

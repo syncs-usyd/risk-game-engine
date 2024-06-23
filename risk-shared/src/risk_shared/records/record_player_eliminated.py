@@ -9,18 +9,9 @@ class RecordPlayerEliminated(BaseRecord):
     record_attack_id: int
     cards_surrendered: list[CardModel]
 
-    def get_censored(self, player_id: int):
-        if self.player == player_id:
-            return self
-        return PublicRecordPlayerEliminated(player=self.player, record_attack_id=self.record_attack_id, cards_surrendered_count=len(self.cards_surrendered))
-
-
 @final
 class PublicRecordPlayerEliminated(BaseRecord):
     record_type: Literal["record_player_eliminated"] = "record_player_eliminated"
     player: int
     record_attack_id: int
     cards_surrendered_count: int
-
-    def get_censored(self, player_id: int):
-        return self

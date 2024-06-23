@@ -9,9 +9,6 @@ class MoveFortify(BaseMove):
     target_territory: int
     troop_count: int
 
-    def get_censored(self, player_id: int):
-        return self
-
     
 
 

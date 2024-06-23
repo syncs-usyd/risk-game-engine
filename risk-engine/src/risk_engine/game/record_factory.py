@@ -4,7 +4,7 @@
 import random
 from typing import cast
 from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidMessageException, InvalidMoveException, PlayerException, TimeoutException
-from risk_engine.game.state import State
+from risk_engine.game.engine_state import EngineState
 from risk_shared.output.ban_type import BanType
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_defend import MoveDefend
@@ -15,7 +15,7 @@ from risk_shared.records.record_player_eliminated import RecordPlayerEliminated
 from risk_shared.records.record_start_turn import RecordStartTurn
 
 
-def record_attack_factory(state: State, move_attack_id: int, move_defend_id: int) -> 'RecordAttack':
+def record_attack_factory(state: EngineState, move_attack_id: int, move_defend_id: int) -> 'RecordAttack':
     move_attack_obj = cast(MoveAttack, state.recording[move_attack_id])
     if move_attack_obj.move == "pass":
         raise RuntimeError("Tried to record an attack relying on a move attack that was a pass.")
@@ -45,31 +45,34 @@ def record_attack_factory(state: State, move_attack_id: int, move_defend_id: int
 
 def record_banned_factory(e: PlayerException) -> 'RecordBanned':
     ban_type: BanType
-    invalid_move = None
+    details = None
     match e:
-        case TimeoutException():
+        case TimeoutException() as e:
             ban_type = "TIMEOUT"
-        case CumulativeTimeoutException():
+            details = e.details
+        case CumulativeTimeoutException() as e:
             ban_type = "CUMULATIVE_TIMEOUT"
+            details = e.details
         case BrokenPipeException():
             ban_type = "BROKEN_PIPE"
-        case InvalidMessageException():
+        case InvalidMessageException() as e:
             ban_type = "INVALID_MESSAGE"
+            details = e.details
         case InvalidMoveException() as e:
             ban_type = "INVALID_MOVE"
-            invalid_move = e.invalid_move
+            details = e.details
         case _:
             raise RuntimeError("An unspecified PlayerException was raised.")
 
-    return RecordBanned(player=e.player_id, reason=e.error_message, ban_type=ban_type, invalid_move=invalid_move)
+    return RecordBanned(player=e.player_id, reason=e.error_message, ban_type=ban_type, details=details)
 
 
-def record_player_eliminated_factory(state: State, record_attack_id: int, player: int) -> 'RecordPlayerEliminated':
+def record_player_eliminated_factory(state: EngineState, record_attack_id: int, player: int) -> 'RecordPlayerEliminated':
     cards_surrendered = list(state.players[player].cards).copy()
     return RecordPlayerEliminated(player=player, record_attack_id=record_attack_id, cards_surrendered=cards_surrendered)
 
 
-def record_start_turn_factory(state: State, player: int) -> 'RecordStartTurn':
+def record_start_turn_factory(state: EngineState, player: int) -> 'RecordStartTurn':
     player_territories = [territory_id for territory_id, territory in state.territories.items() if territory.occupier == player]
     territory_bonus = max(3, len(player_territories) // 3)
 
@@ -83,7 +86,7 @@ def record_start_turn_factory(state: State, player: int) -> 'RecordStartTurn':
     return RecordStartTurn(player=player, continents_held=continents_held, territories_held=len(player_territories), continent_bonus=continent_bonus, territory_bonus=territory_bonus)
 
 
-def record_drew_card_factory(state: State, player: int) -> 'RecordDrewCard':
+def record_drew_card_factory(state: EngineState, player: int) -> 'RecordDrewCard':
     if len(state.deck) == 0:
         raise RuntimeError("Need to shuffle deck before drawing.")
 

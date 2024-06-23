@@ -77,9 +77,9 @@ def print_usage():
     "                                                       start the engine (for example, while debugging it).\n"
     "\n"
     "   examples:\n"
-    "       python3 match_simulator.py --submissions 5:example_submissions/example.py --engine\n"
-    "       python3 match_simulator.py --submissions 2:example_submissions/example.py 3:my_submission.py --engine\n"
-    "       python3 match_simulator.py --submissions 4:example_submissions.example.py d:my_submission.py --engine\n")
+    "       python3 match_simulator.py --submissions 5:example_submissions/complex.py --engine\n"
+    "       python3 match_simulator.py --submissions 2:example_submissions/complex.py 3:my_submission.py --engine\n"
+    "       python3 match_simulator.py --submissions 4:example_submissions/complex.py d:my_submission.py --engine\n")
     sys.exit(0)
 
 

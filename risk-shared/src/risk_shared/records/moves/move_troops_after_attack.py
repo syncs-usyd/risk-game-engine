@@ -8,9 +8,6 @@ class MoveTroopsAfterAttack(BaseMove):
     record_type: Literal["move_troops_after_attack"] = "move_troops_after_attack"
     record_attack_id: int
     troop_count: int
-    
-    def get_censored(self, player_id: int):
-        return self
 
 
 

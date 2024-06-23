@@ -4,7 +4,7 @@ from pydantic import TypeAdapter
 from risk_shared.queries.query_type import QueryType
 from risk_shared.records.types.move_type import MoveType
 
-MAX_CHARACTERS_READ = 50000
+MAX_CHARACTERS_READ = 100000
 READ_CHUNK_SIZE = 1024
 
 class Connection():
