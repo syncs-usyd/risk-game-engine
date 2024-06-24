@@ -2,10 +2,12 @@ import random
 from typing import TypeGuard, cast
 from risk_engine.game.engine_state import EngineState
 from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
 from risk_shared.records.moves.move_distribute_troops import MoveDistributeTroops
 from risk_shared.records.moves.move_fortify import MoveFortify
+from risk_shared.records.moves.move_fortify_pass import MoveFortifyPass
 from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
 from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
@@ -34,6 +36,8 @@ class StateMutator():
         match record:
             case MoveAttack() as r:
                 self._commit_move_attack(r)
+            case MoveAttackPass() as r:
+                self._commit_move_attack_pass(r)
             case MoveClaimTerritory() as r:
                 self._commit_move_claim_territory(r)
             case MoveDefend() as r:
@@ -42,6 +46,8 @@ class StateMutator():
                 self._commit_move_distribute_troops(r)
             case MoveFortify() as r:
                 self._commit_move_fortify(r)
+            case MoveFortifyPass() as r:
+                self._commit_move_fortify_pass(r)
             case MovePlaceInitialTroop() as r:
                 self._commit_move_place_initial_troop(r)
             case MoveRedeemCards() as r:
@@ -78,6 +84,10 @@ class StateMutator():
         pass
 
 
+    def _commit_move_attack_pass(self, r: MoveAttackPass) -> None:
+        pass
+
+
     def _commit_move_claim_territory(self, r: MoveClaimTerritory) -> None:
         player = self.state.players[r.move_by_player]
         
@@ -108,6 +118,10 @@ class StateMutator():
     def _commit_move_fortify(self, r: MoveFortify) -> None:
         self.state.territories[r.source_territory].troops -= r.troop_count
         self.state.territories[r.target_territory].troops += r.troop_count
+
+
+    def _commit_move_fortify_pass(self, r: MoveFortifyPass) -> None:
+        pass
 
 
     def _commit_move_place_initial_troop(self, r: MovePlaceInitialTroop) -> None:
@@ -158,20 +172,16 @@ class StateMutator():
 
         move_attack_id = record_attack.move_attack_id
         move_attack = cast(MoveAttack, self.state.recording[move_attack_id])
-        if move_attack.move == "pass":
-            raise RuntimeError("Trying to move troops for attack that was a pass.")
         
-        self.state.territories[move_attack.move.attacking_territory].troops -= r.troop_count
-        self.state.territories[move_attack.move.defending_territory].troops += r.troop_count
+        self.state.territories[move_attack.attacking_territory].troops -= r.troop_count
+        self.state.territories[move_attack.defending_territory].troops += r.troop_count
 
 
     def _commit_record_attack(self, x: RecordAttack) -> None:
         move_attack_obj = cast(MoveAttack, self.state.recording[x.move_attack_id])
 
-        if move_attack_obj.move == "pass":
-            raise RuntimeError("Tried to commit record attack for move attack that was a pass.")
-        attacking_territory = move_attack_obj.move.attacking_territory
-        defending_territory = move_attack_obj.move.defending_territory
+        attacking_territory = move_attack_obj.attacking_territory
+        defending_territory = move_attack_obj.defending_territory
 
         self.state.territories[attacking_territory].troops -= x.attacking_troops_lost
         self.state.territories[defending_territory].troops -= x.defending_troops_lost
@@ -219,10 +229,8 @@ class StateMutator():
     def _commit_record_territory_conquered(self, r: RecordTerritoryConquered) -> None:
         record_attack = cast(RecordAttack, self.state.recording[r.record_attack_id])
         move_attack = cast(MoveAttack, self.state.recording[record_attack.move_attack_id])
-        if move_attack.move == "pass":
-            raise RuntimeError("Tried to record territory conquered for attack that was a pass.")
 
-        defending_territory = move_attack.move.defending_territory
+        defending_territory = move_attack.defending_territory
 
         self.state.territories[defending_territory].troops = 0
         self.state.territories[defending_territory].occupier = move_attack.move_by_player

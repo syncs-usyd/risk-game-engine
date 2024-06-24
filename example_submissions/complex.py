@@ -1,6 +1,6 @@
 from collections import defaultdict, deque
 import random
-from typing import Optional, Tuple, cast
+from typing import Optional, Tuple, Union, cast
 from risk_helper.game import Game
 from risk_shared.models.card_model import CardModel
 from risk_shared.queries.query_attack import QueryAttack
@@ -13,10 +13,12 @@ from risk_shared.queries.query_redeem_cards import QueryRedeemCards
 from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
 from risk_shared.queries.query_type import QueryType
 from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
 from risk_shared.records.moves.move_distribute_troops import MoveDistributeTroops
 from risk_shared.records.moves.move_fortify import MoveFortify
+from risk_shared.records.moves.move_fortify_pass import MoveFortifyPass
 from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
 from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
@@ -184,7 +186,7 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     return game.move_distribute_troops(query, distributions)
 
 
-def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> MoveAttack:
+def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[MoveAttack, MoveAttackPass]:
     """After the troop phase of your turn, you may attack any number of times until you decide to
     stop attacking (by passing). After a successful attack, you may move troops into the conquered
     territory. If you eliminated a player you will get a move to redeem cards and then distribute troops."""
@@ -210,7 +212,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> MoveAt
     for record in new_records:
         match record:
             case MoveAttack() as r:
-                if (r.move != "pass" and r.move.defending_territory in set(my_territories)):
+                if r.defending_territory in set(my_territories):
                     enemy = r.move_by_player
 
     # If we don't have an enemy yet, or we feel angry, this player will become our enemy.
@@ -240,10 +242,9 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     # which territory was the attacking territory.
     record_attack = cast(RecordAttack, game.state.recording[query.record_attack_id])
     move_attack = cast(MoveAttack, game.state.recording[record_attack.move_attack_id])
-    assert move_attack.move != "pass"
 
     # We will always move the maximum number of troops we can.
-    return game.move_troops_after_attack(query, game.state.territories[move_attack.move.attacking_territory].troops - 1)
+    return game.move_troops_after_attack(query, game.state.territories[move_attack.attacking_territory].troops - 1)
 
 
 def handle_defend(game: Game, bot_state: BotState, query: QueryDefend) -> MoveDefend:
@@ -253,8 +254,7 @@ def handle_defend(game: Game, bot_state: BotState, query: QueryDefend) -> MoveDe
 
     # First we need to get the record that describes the attack we are defending against.
     move_attack = cast(MoveAttack, game.state.recording[query.move_attack_id])
-    assert move_attack.move != "pass" # Since we are defending against this attack, it can't be a pass.
-    defending_territory = move_attack.move.defending_territory
+    defending_territory = move_attack.defending_territory
     
     # We can only defend with up to 2 troops, and no more than we have stationed on the defending
     # territory.
@@ -262,7 +262,7 @@ def handle_defend(game: Game, bot_state: BotState, query: QueryDefend) -> MoveDe
     return game.move_defend(query, defending_troops)
 
 
-def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> MoveFortify:
+def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Union[MoveFortify, MoveFortifyPass]:
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
     any two of your territories (they must be adjacent)."""
 

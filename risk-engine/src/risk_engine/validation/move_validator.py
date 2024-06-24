@@ -7,11 +7,13 @@ from risk_shared.queries.query_defend import QueryDefend
 from risk_shared.queries.query_redeem_cards import QueryRedeemCards
 from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
 from risk_shared.records.base_move import BaseMove
-from risk_shared.records.moves.move_attack import MoveAttack, MoveAttackDescription
+from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
 from risk_shared.records.moves.move_distribute_troops import MoveDistributeTroops
 from risk_shared.records.moves.move_fortify import MoveFortify
+from risk_shared.records.moves.move_fortify_pass import MoveFortifyPass
 from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
 from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
@@ -30,6 +32,8 @@ class MoveValidator():
         match record:
             case MoveAttack() as r:
                 return self._validate_move_attack(r, query, player)
+            case MoveAttackPass() as r:
+                return self._validate_move_attack_pass(r, query, player)
             case MoveClaimTerritory() as r:
                 return  self._validate_move_claim_territory(r, query, player)
             case MoveDefend() as r:
@@ -38,6 +42,8 @@ class MoveValidator():
                 return self._validate_move_distribute_troops(r, query, player)
             case MoveFortify() as r:
                 return self._validate_move_fortify(r, query, player)
+            case MoveFortifyPass() as r:
+                return self._validate_move_fortify_pass(r, query, player)
             case MovePlaceInitialTroop() as r:
                 return self._validate_move_place_initial_troop(r, query, player)
             case MoveRedeemCards() as r:
@@ -54,12 +60,9 @@ class MoveValidator():
 
 
     def _validate_move_attack(self, r: MoveAttack, query: BaseQuery, player: int) -> None:
-        if not isinstance(r.move, MoveAttackDescription):
-            return
-
-        attacking_territory = r.move.attacking_territory
-        defending_territory = r.move.defending_territory
-        attacking_troops = r.move.attacking_troops
+        attacking_territory = r.attacking_territory
+        defending_territory = r.defending_territory
+        attacking_troops = r.attacking_troops
 
         if not attacking_territory in self.state.territories:
             raise ValueError(f"No territory exists with territory_id {attacking_territory}.")
@@ -83,6 +86,10 @@ class MoveValidator():
             raise ValueError(f"You do not have enough troops, you tried to commit {attacking_territory} troops but only have {self.state.territories[attacking_territory].troops}. Remember 1 troop must remain on the attacking territory.")
 
 
+    def _validate_move_attack_pass(self, r: MoveAttackPass, query: BaseQuery, player: int) -> None:
+        pass
+
+
     def _validate_move_claim_territory(self, r: MoveClaimTerritory, query: BaseQuery, player: int) -> None:
         if not r.territory in self.state.territories:
             raise ValueError(f"You tried to claim a nonexistant territory with id {r.territory}.")
@@ -97,10 +104,8 @@ class MoveValidator():
             raise ValueError(f"You have to defend the attack with record id {query.move_attack_id}.")
 
         move_attack_obj = cast(MoveAttack, self.state.recording[r.move_attack_id])
-        if move_attack_obj.move == "pass":
-            raise RuntimeError("Trying to defend attack move that was a pass.")
         
-        defending_territory = move_attack_obj.move.defending_territory
+        defending_territory = move_attack_obj.defending_territory
         if self.state.territories[defending_territory].occupier != r.move_by_player:
             raise RuntimeError("Wrong player is defending.")
 
@@ -152,6 +157,10 @@ class MoveValidator():
         
         if not 0 <= r.troop_count <= self.state.territories[r.source_territory].troops - 1:
             raise ValueError(f"You tried to move {r.troop_count} troops, you must move between zero and the number of troops in the source territory, subtracting one troop which must be left behind.")
+
+
+    def _validate_move_fortify_pass(self, r: MoveFortifyPass, query: BaseQuery, player: int) -> None:
+        pass
 
 
     def _validate_move_place_initial_troop(self, r: MovePlaceInitialTroop, query: BaseQuery, player: int) -> None:
@@ -217,15 +226,13 @@ class MoveValidator():
 
         move_attack_id = record_attack.move_attack_id
         move_attack = cast(MoveAttack, self.state.recording[move_attack_id])
-        if move_attack.move == "pass":
-            raise RuntimeError("Trying to move troops for attack that was a pass.")
 
-        minimum_troops_moved = move_attack.move.attacking_troops - record_attack.attacking_troops_lost
+        minimum_troops_moved = move_attack.attacking_troops - record_attack.attacking_troops_lost
 
         if not minimum_troops_moved <= r.troop_count:
             raise ValueError("You must move troops from the attacking territory to the defending territory after a successful attack, depending on how many troops were committed and how many died.")
         
-        if not r.troop_count <= self.state.territories[move_attack.move.attacking_territory].troops - 1:
-            raise ValueError(f"You tried to move too many troops from territory {move_attack.move.attacking_territory}.")
+        if not r.troop_count <= self.state.territories[move_attack.attacking_territory].troops - 1:
+            raise ValueError(f"You tried to move too many troops from territory {move_attack.attacking_territory}.")
 
 

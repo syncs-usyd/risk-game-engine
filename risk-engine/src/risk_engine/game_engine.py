@@ -15,6 +15,7 @@ from risk_engine.output.game_result import GameBanResult, GameCancelledResult, G
 from risk_engine.output.recording_inspector import RecordingInspector
 from risk_engine.validation.move_validator import MoveValidator
 from risk_shared.models.player_model import PlayerModel
+from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 from risk_shared.records.record_cancelled import RecordCancelled
 from risk_shared.records.record_shuffled_cards import RecordShuffledCards
 from risk_shared.records.record_start_game import RecordStartGame
@@ -195,10 +196,10 @@ class GameEngine:
             move_attack_id = len(self.state.recording) - 1
 
             # If the player passes, move to the next phase.
-            if attack.move == "pass":
+            if isinstance(attack, MoveAttackPass):
                 break
             
-            defending_player = self.state.territories[attack.move.defending_territory].occupier
+            defending_player = self.state.territories[attack.defending_territory].occupier
             if defending_player == None:
                 raise RuntimeError("Tried to attack unoccupied territory.")
 

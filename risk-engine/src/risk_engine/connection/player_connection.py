@@ -9,13 +9,15 @@ from typing import Callable, Literal, Optional, ParamSpec, Type, TypeVar, Union,
 from risk_engine.censoring.censor_record import CensorRecord
 from risk_engine.game.state_mutator import StateMutator
 from risk_engine.validation.move_validator import MoveValidator
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidMoveException, PlayerException, InvalidMessageException, TimeoutException
 from risk_engine.game.engine_state import EngineState
 from risk_shared.models.player_model import PlayerModel
 from risk_shared.queries.query_type import QueryType
+from risk_shared.records.moves.move_attack_pass import MoveAttackPass
+from risk_shared.records.moves.move_fortify_pass import MoveFortifyPass
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 from risk_shared.records.types.move_type import MoveType
 from risk_shared.queries.base_query import BaseQuery
@@ -117,6 +119,7 @@ def time_limited(error_message: str = "You took too long to respond."):
 
 
 T2 = TypeVar("T2", bound=MoveType)
+T3 = TypeVar("T3", bound=MoveType)
 @final
 class PlayerConnection():
 
@@ -176,6 +179,21 @@ class PlayerConnection():
         except ValueError as e:
             raise InvalidMoveError(str(e), move)
         return move
+    
+
+    @handle_invalid
+    @handle_sigpipe
+    @time_limited()
+    def _query_move_union(self, query: QueryType, response_type_1: Type[T2], response_type_2: Type[T3], validator: MoveValidator) -> Union[T2, T3]:
+        self._send(query.model_dump_json())
+
+        adapter = TypeAdapter(Union[response_type_1, response_type_2])
+        move = adapter.validate_json(self._receive())
+        try:
+            validator.validate(move, query, self.player_id)
+        except ValueError as e:
+            raise InvalidMoveError(str(e), move)
+        return move
 
 
     def _get_record_update_dict(self, state: EngineState, censor: CensorRecord):
@@ -196,9 +214,9 @@ class PlayerConnection():
         return self._query_move(query, MovePlaceInitialTroop, validator)
 
 
-    def query_attack(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> MoveAttack:
+    def query_attack(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> Union[MoveAttack, MoveAttackPass]:
         query = QueryAttack(update=self._get_record_update_dict(state, censor))
-        return self._query_move(query, MoveAttack, validator)
+        return self._query_move_union(query, MoveAttack, MoveAttackPass, validator)
 
 
     def query_defend(self, state: EngineState, validator: MoveValidator, censor: CensorRecord, move_attack_id: int) -> MoveDefend:
@@ -221,9 +239,9 @@ class PlayerConnection():
         return self._query_move(query, MoveRedeemCards, validator) 
     
 
-    def query_fortify(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> MoveFortify:
+    def query_fortify(self, state: EngineState, validator: MoveValidator, censor: CensorRecord) -> Union[MoveFortify, MoveFortifyPass]:
         query = QueryFortify(update=self._get_record_update_dict(state, censor))
-        return self._query_move(query, MoveFortify, validator) 
+        return self._query_move_union(query, MoveFortify, MoveFortifyPass, validator) 
 
 
 if __name__ == "__main__":

@@ -17,10 +17,8 @@ from risk_shared.records.record_start_turn import RecordStartTurn
 
 def record_attack_factory(state: EngineState, move_attack_id: int, move_defend_id: int) -> 'RecordAttack':
     move_attack_obj = cast(MoveAttack, state.recording[move_attack_id])
-    if move_attack_obj.move == "pass":
-        raise RuntimeError("Tried to record an attack relying on a move attack that was a pass.")
 
-    attacking_troops = move_attack_obj.move.attacking_troops
+    attacking_troops = move_attack_obj.attacking_troops
     
     move_defend_obj = cast(MoveDefend, state.recording[move_defend_id])
     defending_troops = move_defend_obj.defending_troops
@@ -35,7 +33,7 @@ def record_attack_factory(state: EngineState, move_attack_id: int, move_defend_i
     attacking_troops_lost = battles_won_by_attacker.count(False)
     defending_troops_lost = battles_won_by_attacker.count(True)
 
-    defending_territory = state.territories[move_attack_obj.move.defending_territory]
+    defending_territory = state.territories[move_attack_obj.defending_territory]
     territory_conquered = defending_troops_lost == defending_territory.troops
 
     defender_eliminated = territory_conquered and len(list(filter(lambda x: x.occupier == move_defend_obj.move_by_player, state.territories.values()))) == 1

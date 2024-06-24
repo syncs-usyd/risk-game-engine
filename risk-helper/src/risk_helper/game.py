@@ -11,11 +11,13 @@ from risk_shared.queries.query_place_initial_troop import QueryPlaceInitialTroop
 from risk_shared.queries.query_redeem_cards import QueryRedeemCards
 from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
 from risk_shared.queries.query_type import QueryType
-from risk_shared.records.moves.move_attack import MoveAttack, MoveAttackDescription
+from risk_shared.records.moves.move_attack import MoveAttack
+from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 from risk_shared.records.moves.move_claim_territory import MoveClaimTerritory
 from risk_shared.records.moves.move_defend import MoveDefend
 from risk_shared.records.moves.move_distribute_troops import MoveDistributeTroops
 from risk_shared.records.moves.move_fortify import MoveFortify
+from risk_shared.records.moves.move_fortify_pass import MoveFortifyPass
 from risk_shared.records.moves.move_place_initial_troop import MovePlaceInitialTroop
 from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
@@ -48,19 +50,14 @@ class Game():
     def move_attack(self, query: QueryAttack, attacking_territory: int, defending_territory: int, attacking_troops: int) -> MoveAttack:
         return MoveAttack(
             move_by_player=self.state.me.player_id,
-            move=MoveAttackDescription(
-                attacking_territory=attacking_territory,
-                defending_territory=defending_territory,
-                attacking_troops=attacking_troops
-            )
+            attacking_territory=attacking_territory,
+            defending_territory=defending_territory,
+            attacking_troops=attacking_troops
         )
     
 
-    def move_attack_pass(self, query: QueryAttack) -> MoveAttack:
-        return MoveAttack(
-            move_by_player=self.state.me.player_id,
-            move="pass"
-        )
+    def move_attack_pass(self, query: QueryAttack) -> MoveAttackPass:
+        return MoveAttackPass(move_by_player=self.state.me.player_id)
 
 
     def move_claim_territory(self, query: QueryClaimTerritory, territory: int) -> MoveClaimTerritory:
@@ -96,13 +93,9 @@ class Game():
         )
     
 
-    def move_fortify_pass(self, query: QueryFortify) -> MoveFortify:
-        territories = self.state.get_territories_owned_by(self.state.me.player_id)
-        return MoveFortify(
+    def move_fortify_pass(self, query: QueryFortify) -> MoveFortifyPass:
+        return MoveFortifyPass(
             move_by_player=self.state.me.player_id,
-            source_territory=territories[0],
-            target_territory=territories[0],
-            troop_count=0
         )
 
 
