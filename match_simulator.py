@@ -118,7 +118,16 @@ def start_submissions() -> list[int]:
 def start_engine():
     print("[simulator] started engine.")
     with open("output/engine.log", "w") as f_log, open("output/engine.err", "w") as f_err:
-        subprocess.run(["python3", "-m", "risk_engine"], stdout=f_log, stderr=f_err)
+        process = subprocess.Popen(["python3", "-m", "risk_engine"], stdout=subprocess.PIPE, stderr=f_err, text=True, universal_newlines=True, bufsize=1)
+
+        while True:
+            if process.stdout is not None:
+                data = process.stdout.read(1)
+                if not data:
+                    break
+                print(data, end="", flush=True)
+                f_log.write(data)
+
     print("[simulator] engine terminated.")
 
 def setup_environment_for_player(player: int, source: str):

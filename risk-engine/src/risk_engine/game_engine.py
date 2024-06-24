@@ -23,11 +23,18 @@ from risk_shared.records.record_territory_conquered import RecordTerritoryConque
 from risk_shared.records.record_winner import RecordWinner
 
 def get_next_turn(state: EngineState, connections: dict[int, PlayerConnection], turn_order: deque[int]) -> Tuple[PlayerModel, PlayerConnection]:
+        
+        
         player_id = turn_order.pop()
-        turn_order.appendleft(player_id)
         player = state.players[player_id]
         connection = connections[player_id]
 
+        while not player.alive:
+            player_id = turn_order.pop()
+            player = state.players[player_id]
+            connection = connections[player_id]
+        
+        turn_order.appendleft(player_id)
         return (player, connection)
 
 
@@ -122,14 +129,13 @@ class GameEngine:
         turn_order = deque(self.state.turn_order.copy())
         cancelled = False
         while len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1:
+            print(f"Match is running, recording is currently {len(self.state.recording)} records long.", flush=True)
 
             if len(self.state.recording) >= MAX_GAME_RECORDING_SIZE:
                 cancelled = True
                 break
-
             
             player, connection = get_next_turn(self.state, self.connections, turn_order)
-            if not player.alive: continue
 
             self._troop_phase(player, connection)
             self._attack_phase(player, connection)
