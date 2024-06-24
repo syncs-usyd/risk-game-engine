@@ -38,7 +38,7 @@ class RecordingInspector():
             case RecordWinner() as x:
                 return GameSuccessResult(ranking=self._get_ranking())
             case _:
-                raise NotImplementedError
+                return GameCancelledResult(reason="Game engine crashed.")
             
 
     def get_recording_json(self) -> str:

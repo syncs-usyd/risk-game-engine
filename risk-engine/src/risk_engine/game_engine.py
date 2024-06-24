@@ -45,8 +45,9 @@ class GameEngine:
         except PlayerException as e:
             record = record_banned_factory(e)
             self.mutator.commit(record)
-
-        self._finish()
+        finally:
+            self._finish()
+        
 
 
     def _connect(self):

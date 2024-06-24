@@ -45,22 +45,18 @@ def record_attack_factory(state: EngineState, move_attack_id: int, move_defend_i
 
 def record_banned_factory(e: PlayerException) -> 'RecordBanned':
     ban_type: BanType
-    details = None
+    details = e.details
     match e:
         case TimeoutException() as e:
             ban_type = "TIMEOUT"
-            details = e.details
         case CumulativeTimeoutException() as e:
             ban_type = "CUMULATIVE_TIMEOUT"
-            details = e.details
         case BrokenPipeException():
             ban_type = "BROKEN_PIPE"
         case InvalidMessageException() as e:
             ban_type = "INVALID_MESSAGE"
-            details = e.details
         case InvalidMoveException() as e:
             ban_type = "INVALID_MOVE"
-            details = e.details
         case _:
             raise RuntimeError("An unspecified PlayerException was raised.")
 

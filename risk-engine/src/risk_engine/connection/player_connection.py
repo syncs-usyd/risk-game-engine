@@ -52,10 +52,13 @@ def handle_sigpipe(fn: Callable[P, T1]) -> Callable[P, T1]:
 
     def dfn(*args: P.args, **kwargs: P.kwargs) -> T1:
         self: 'PlayerConnection' = args[0] # type: ignore
+        query: Optional[QueryType] = None
+        if len(args) >= 2 and isinstance(args[1], BaseQuery):
+                query = args[1]   # type: ignore
         try:
             result = fn(*args, **kwargs)
         except BrokenPipeError:
-            raise BrokenPipeException(self.player_id, "You closed 'from_engine.pipe'.")
+            raise BrokenPipeException(self.player_id, "You closed 'from_engine.pipe'.", query)
 
         return result
     
