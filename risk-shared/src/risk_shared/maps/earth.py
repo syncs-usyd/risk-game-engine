@@ -101,12 +101,60 @@ def create_map():
     }
 
     continents = {
-        0 : [0, 1, 2, 3, 4, 5,6, 7, 8],
-        1 : [9, 10, 11, 12, 13],
-        2 : [14, 15, 16, 17, 18, 19],
-        3: [20, 21, 22, 23, 24, 25],
-        4: [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
-        5: [38, 39, 40, 41],
+        0 : [
+                vertices["ALASKA"],
+                vertices["ALBERTA"],
+                vertices["CENTRAL_AMERICA"],
+                vertices["EASTERN_US"],
+                vertices["GREENLAND"],
+                vertices["NORTHWEST_TERRITORY"],
+                vertices["ONTARIO"],
+                vertices["QUEBEC"],
+                vertices["WESTERN_US"]
+            ],
+        1 : [
+                vertices["GREAT_BRITAIN"],
+                vertices["ICELAND"],
+                vertices["NORTHERN_EUROPE"],
+                vertices["SCANDANAVIA"],
+                vertices["SOUTHERN_EUROPE"],
+                vertices["UKRAINE"],
+                vertices["WESTERN_EUROPE"],
+            ],
+        2 : [
+                vertices["AFGHANISTAN"],
+                vertices["CHINA"],
+                vertices["INDIA"],
+                vertices["IRKUTSK"],
+                vertices["JAPAN"],
+                vertices["KAMCHATKA"],
+                vertices["MIDDLE_EAST"],
+                vertices["MONGOLIA"],
+                vertices["SIAM"],
+                vertices["SIBERIA"],
+                vertices["URAL"],
+                vertices["YAKUTSK"],
+            ],
+        3: [
+                vertices["ARGENTINA"],
+                vertices["BRAZIL"],
+                vertices["VENEZUELA"],
+                vertices["PERU"],
+            ],
+        4: [
+                vertices["CONGO"],
+                vertices["EAST_AFRICA"],
+                vertices["EGYPT"],
+                vertices["MADAGASCAR"],
+                vertices["NORTH_AFRICA"],
+                vertices["SOUTH_AFRICA"]
+            ],
+        5: [
+                vertices["EASTERN_AUSTRALIA"],
+                vertices["NEW_GUINEA"],
+                vertices["INDONESIA"],
+                vertices["WESTERN_AUSTRALIA"],
+            ],
     }
 
     continent_bonuses = {
