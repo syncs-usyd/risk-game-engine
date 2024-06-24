@@ -116,7 +116,7 @@ def create_map():
                 vertices["GREAT_BRITAIN"],
                 vertices["ICELAND"],
                 vertices["NORTHERN_EUROPE"],
-                vertices["SCANDANAVIA"],
+                vertices["SCANDINAVIA"],
                 vertices["SOUTHERN_EUROPE"],
                 vertices["UKRAINE"],
                 vertices["WESTERN_EUROPE"],
@@ -159,10 +159,10 @@ def create_map():
 
     continent_bonuses = {
         0 : 5,
-        1 : 2,
-        2 : 5,
-        3 : 3,
-        4 : 7,
+        1 : 5,
+        2 : 7,
+        3 : 2,
+        4 : 3,
         5 : 2,
     }
 
