@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import cast
 from risk_engine.game.engine_state import EngineState
 from risk_shared.models.card_model import CardModel
@@ -172,9 +173,14 @@ class MoveValidator():
                     raise ValueError(f"You tried to redeem a nonexistant card with id {i}")
             cards: list[CardModel] = [self.state.cards[i] for i in card_set]
 
-            unique_symbols = set(map(lambda x: x.symbol, cards))
-            unique_symbols_count = len(unique_symbols)
-            if not ((unique_symbols_count == 3 or unique_symbols_count == 1) or (unique_symbols_count == 2 and "Wildcard" in unique_symbols)):
+            cards_by_symbol = defaultdict(lambda: 0)
+            for card in cards:
+                cards_by_symbol[card.symbol] += 1
+
+            is_matching_set = len(cards_by_symbol) == 1 and "Wildcard" not in cards_by_symbol
+            is_one_of_each_set = len(cards_by_symbol) == 3 and "Wildcard" not in cards_by_symbol
+            is_wildcard_set = "Wildcard" in cards_by_symbol and cards_by_symbol["Wildcard"] == 1
+            if not (is_matching_set or is_one_of_each_set or is_wildcard_set):
                 raise ValueError(f"You tried to redeem a set of cards {cards[0].symbol}, {cards[1].symbol}, {cards[2].symbol}, which is not a set.")
 
         def check_owns_cards(cards):
