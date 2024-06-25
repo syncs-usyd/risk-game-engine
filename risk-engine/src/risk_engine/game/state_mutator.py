@@ -163,7 +163,7 @@ class StateMutator():
         self.state.discarded_deck.extend([self.state.cards[i] for i in all_cards])
         
         # Emit a RecordRedeemedCards.
-        record = RecordRedeemedCards(redeem_cards_move=len(self.state.recording) - 1, total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
+        record = RecordRedeemedCards(move_redeem_cards_id=len(self.state.recording) - 1, total_set_bonus=total_set_bonus, matching_territory_bonus=matching_territory_bonus)
         self.commit(record)
 
 

@@ -118,7 +118,7 @@ def start_submissions() -> list[int]:
 def start_engine():
     print("[simulator] started engine.")
     with open("output/engine.log", "w") as f_log, open("output/engine.err", "w") as f_err:
-        process = subprocess.Popen(["python3", "-m", "risk_engine"], stdout=subprocess.PIPE, stderr=f_err, text=True, universal_newlines=True, bufsize=1)
+        process = subprocess.Popen(["python3", "-m", "risk_engine", "--print-recording-interactive"], stdout=subprocess.PIPE, stderr=f_err, text=True, universal_newlines=True, bufsize=1)
 
         while True:
             if process.stdout is not None:

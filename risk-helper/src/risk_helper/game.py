@@ -80,6 +80,7 @@ class Game():
         
         return MoveDistributeTroops(
             move_by_player=self.state.me.player_id,
+            cause=query.cause,
             distributions=distributions
         )
 

@@ -4,6 +4,7 @@ from risk_engine.game.engine_state import EngineState
 from risk_shared.models.card_model import CardModel
 from risk_shared.queries.base_query import BaseQuery
 from risk_shared.queries.query_defend import QueryDefend
+from risk_shared.queries.query_distribute_troops import QueryDistributeTroops
 from risk_shared.queries.query_redeem_cards import QueryRedeemCards
 from risk_shared.queries.query_troops_after_attack import QueryTroopsAfterAttack
 from risk_shared.records.base_move import BaseMove
@@ -83,7 +84,7 @@ class MoveValidator():
             raise ValueError(f"You must commit between 1 and 3 troops for the attack, you committed {attacking_troops}.")
         
         if attacking_troops > self.state.territories[attacking_territory].troops - 1:
-            raise ValueError(f"You do not have enough troops, you tried to commit {attacking_territory} troops but only have {self.state.territories[attacking_territory].troops}. Remember 1 troop must remain on the attacking territory.")
+            raise ValueError(f"You do not have enough troops, you tried to commit {attacking_troops} troops but only have {self.state.territories[attacking_territory].troops}. Remember 1 troop must remain on the attacking territory.")
 
 
     def _validate_move_attack_pass(self, r: MoveAttackPass, query: BaseQuery, player: int) -> None:
@@ -116,6 +117,7 @@ class MoveValidator():
 
 
     def _validate_move_distribute_troops(self, r: MoveDistributeTroops, query: BaseQuery, player: int) -> None:
+        query = cast(QueryDistributeTroops, query)
         for territory in r.distributions:
             if not territory in self.state.territories:
                 raise ValueError(f"You tried to distribute troops to a nonexistant territory with id {territory}.")
@@ -126,6 +128,9 @@ class MoveValidator():
         if sum(r.distributions.values()) != self.state.players[player].troops_remaining:
             raise ValueError(f"You must distribute exactly your remaining {self.state.players[player].troops_remaining} troops.")
         
+        if r.cause != query.cause:
+            raise ValueError(f"You tried to change the cause of this move from {query.cause}.")
+
         matching_territories = self.state.players[player].must_place_territory_bonus
         if len(matching_territories) > 0:
             for territory in matching_territories:

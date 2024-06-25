@@ -8,7 +8,7 @@ class PlayerException(Exception):
         super().__init__(error_message)
         self.player_id = player_id
         self.error_message = error_message
-        self.details = None
+        self.details = details
 
 class TimeoutException(PlayerException):
     def __init__(self, player_id: int, error_message: str, query: Optional[QueryType]):

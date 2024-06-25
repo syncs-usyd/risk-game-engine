@@ -23,8 +23,6 @@ from risk_shared.records.record_territory_conquered import RecordTerritoryConque
 from risk_shared.records.record_winner import RecordWinner
 
 def get_next_turn(state: EngineState, connections: dict[int, PlayerConnection], turn_order: deque[int]) -> Tuple[PlayerModel, PlayerConnection]:
-        
-        
         player_id = turn_order.pop()
         player = state.players[player_id]
         connection = connections[player_id]
@@ -39,12 +37,13 @@ def get_next_turn(state: EngineState, connections: dict[int, PlayerConnection], 
 
 
 class GameEngine:
-    def __init__(self):
+    def __init__(self, print_recording_interactive: bool=False):
         self.state = EngineState()
         self.mutator = StateMutator(self.state)
         self.validator = MoveValidator(self.state)
         self.censor = CensorRecord(self.state)
         self.connections: dict[int, PlayerConnection]
+        self.print_recording_interactive = print_recording_interactive
 
     def start(self):
         try:
@@ -72,7 +71,7 @@ class GameEngine:
             f.write(result.model_dump_json())
 
         # Write the game log.
-        with open(f"{CORE_DIRECTORY}/output/game.log", "w") as f:
+        with open(f"{CORE_DIRECTORY}/output/game.json", "w") as f:
             f.write(inspector.get_recording_json())
 
         def copy_stdout_stderr_player(player: int):
@@ -96,6 +95,7 @@ class GameEngine:
 
         # Only copy for the player who was banned, otherwise copy for all players, or only copy the log
         # if the match was cancelled.
+        print(f"[engine]: match complete, outcome was {{{result}}}", flush=True)
         match result:
             case GameBanResult() as x:
                 copy_stdout_stderr_player(player=x.player)
@@ -129,7 +129,8 @@ class GameEngine:
         turn_order = deque(self.state.turn_order.copy())
         cancelled = False
         while len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1:
-            print(f"Match is running, recording is currently {len(self.state.recording)} records long.", flush=True)
+            if self.print_recording_interactive: 
+                print(f"[engine] recording match: {len(self.state.recording)}", flush=True)
 
             if len(self.state.recording) >= MAX_GAME_RECORDING_SIZE:
                 cancelled = True
@@ -139,7 +140,10 @@ class GameEngine:
 
             self._troop_phase(player, connection)
             self._attack_phase(player, connection)
-            self._fortify_phase(player, connection)
+
+            # Don't bother with fortify phase if game has already ended.
+            if len(list(filter(lambda x: x.alive == True, self.state.players.values()))) > 1:
+                self._fortify_phase(player, connection)
 
         # If the game was terminated due to taking too long, cancel the match.
         if cancelled:
@@ -194,6 +198,7 @@ class GameEngine:
     def _attack_phase(self, player: PlayerModel, connection: PlayerConnection):
 
         conquered_territory = False
+        abort_early = False
         while (True):
 
             # Get the attack move.
@@ -219,31 +224,40 @@ class GameEngine:
             self.mutator.commit(record_attack)
             record_attack_id = len(self.state.recording) - 1
 
-            # Emit a RecordTerritoryConquered and then allow player to move troops.
+            # Emit a RecordTerritoryConquered.
             if record_attack.territory_conquered:
                 conquered_territory = True
 
                 record = RecordTerritoryConquered(record_attack_id=record_attack_id)
                 self.mutator.commit(record)
 
-                response = connection.query_troops_after_attack(self.state, self.validator, self.censor, record_attack_id)
-                self.mutator.commit(response)
-
-            # Emit a RecordPlayerEliminated and then allow player to redeem cards and distribute troops if required.
+            # Emit a RecordPlayerEliminated
             if record_attack.defender_eliminated:
                 record = record_player_eliminated_factory(self.state, move_defend_id, defending_player)
                 self.mutator.commit(record)
 
-                if len(player.cards) > 6:
-                    response = connection.query_redeem_cards(self.state, self.validator, self.censor, cause="player_eliminated")
-                    self.mutator.commit(response)
+                # Abort early if game just finished.
+                if len(list(filter(lambda x: x.alive == True, self.state.players.values()))) == 1:
+                    abort_early = True
+                    break
 
-                    response = connection.query_distribute_troops(self.state, self.validator, self.censor, cause="player_eliminated")
-                    self.mutator.commit(response)
+
+            # If a territory was conquered, the attacking player can move troops.
+            if record_attack.territory_conquered:
+                response = connection.query_troops_after_attack(self.state, self.validator, self.censor, record_attack_id)
+                self.mutator.commit(response)
+
+            # If a player was eliminated and the attacking player now has more than 6 cards, they get to redeem and then place troops.
+            if record_attack.defender_eliminated and len(player.cards) > 6:
+                response = connection.query_redeem_cards(self.state, self.validator, self.censor, cause="player_eliminated")
+                self.mutator.commit(response)
+
+                response = connection.query_distribute_troops(self.state, self.validator, self.censor, cause="player_eliminated")
+                self.mutator.commit(response)
 
         # If the player conquered any territories this turn, they draw a card.
         # Shuffle the deck first if necessary.
-        if conquered_territory:
+        if conquered_territory and not abort_early:
             if len(self.state.deck) == 0:
                 record = RecordShuffledCards()
                 self.mutator.commit(record)

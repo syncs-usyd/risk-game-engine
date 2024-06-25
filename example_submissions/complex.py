@@ -196,14 +196,13 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
     bordering_territories = game.state.get_all_adjacent_territories(my_territories)
 
     def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
-        # We will attack the weakest territory from the list for which the difference in troops between that 
-        # territory and one of ours that can attack it is at least 3 in our favour.
+        # We will attack the weakest territory from the list.
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
         for candidate_target in territories:
             candidate_attackers = list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories))
             for candidate_attacker in candidate_attackers:
-                if game.state.territories[candidate_attacker].troops > game.state.territories[candidate_target].troops + 3:
-                    return game.move_attack(query, candidate_attacker, candidate_target, 3)
+                if game.state.territories[candidate_attacker].troops > 1:
+                    return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
 
     # We will check if anyone attacked us in the last round.
@@ -231,7 +230,11 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
     if move != None:
         return move
 
-    # Otherwise we will pass.
+    # Otherwise we will attack anyone.
+    move = attack_weakest(bordering_territories)
+    if move != None:
+        return move
+
     return game.move_attack_pass(query)
 
 
@@ -266,7 +269,6 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
     any two of your territories (they must be adjacent)."""
 
-    print("fortifying!")
 
     # We will always fortify towards the most powerful player (player with most troops on the map) to defend against them.
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
@@ -280,22 +282,16 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify) -> Unio
     if most_powerful_player == game.state.me.player_id:
         return game.move_fortify_pass(query)
     
-    # Otherwise we will find the shortest path between our non-border territory with the most troops
+    # Otherwise we will find the shortest path between our territory with the most troops
     # and any of the most powerful player's territories and fortify along that path.
-    candidate_territories = list(set(my_territories) - set(game.state.get_all_border_territories(my_territories)))
-    
-    # If there are no non-border territories we will pass.
-    if len(candidate_territories) == 0:
-        return game.move_fortify_pass(query)
-
+    candidate_territories = game.state.get_all_border_territories(my_territories)
     most_troops_territory = max(candidate_territories, key=lambda x: game.state.territories[x].troops)
 
     # To find the shortest path, we will use a custom function.
     shortest_path = find_shortest_path_from_vertex_to_set(game, most_troops_territory, set(game.state.get_territories_owned_by(most_powerful_player)))
-
     # We will move our troops along this path (we can only move one step, and we have to leave one troop behind).
     # We have to check that we can move any troops though, if we can't then we will pass our turn.
-    if game.state.territories[most_troops_territory].troops > 1:
+    if len(shortest_path) > 0 and game.state.territories[most_troops_territory].troops > 1:
         return game.move_fortify(query, shortest_path[0], shortest_path[1], game.state.territories[most_troops_territory].troops - 1)
     else:
         return game.move_fortify_pass(query)
@@ -308,12 +304,11 @@ def find_shortest_path_from_vertex_to_set(game: Game, source: int, target_set: s
     queue = deque()
     queue.appendleft(source)
 
+    current = queue.pop()
     parent = {}
-    seen = {}
+    seen = {current: True}
 
     while len(queue) != 0:
-        current = queue.pop()
-
         if current in target_set:
             break
 
@@ -322,6 +317,8 @@ def find_shortest_path_from_vertex_to_set(game: Game, source: int, target_set: s
                 seen[neighbour] = True
                 parent[neighbour] = current
                 queue.appendleft(neighbour)
+
+        current = queue.pop()
 
     path = []
     while current in parent:
