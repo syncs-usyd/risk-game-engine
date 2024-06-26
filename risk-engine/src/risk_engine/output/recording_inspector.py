@@ -3,7 +3,7 @@
 from typing import Tuple, Union, cast
 
 from pydantic import RootModel
-from risk_engine.output.game_result import GameBanResult, GameCancelledResult, GameSuccessResult
+from risk_engine.output.game_result import GameBanResult, GameCancelledResult, GameCrashedResult, GameSuccessResult
 from risk_shared.maps import earth
 from risk_shared.models.territory_model import TerritoryModel
 from risk_shared.records.moves.move_attack import MoveAttack
@@ -39,16 +39,16 @@ class RecordingInspector():
         return ranking[::-1]
 
 
-    def get_result(self) -> Union[GameBanResult, GameSuccessResult, GameCancelledResult]:
+    def get_result(self) -> Union[GameBanResult, GameSuccessResult, GameCancelledResult, GameCrashedResult]:
         match self.recording[-1]:
             case RecordCancelled() as x:
                 return GameCancelledResult(reason=x.reason)
             case RecordBanned() as x:
-                return GameBanResult(result_type=x.ban_type, player=x.player, reason=x.reason)
+                return GameBanResult(ban_type=x.ban_type, player=x.player, reason=x.reason)
             case RecordWinner() as x:
                 return GameSuccessResult(ranking=self._get_ranking())
             case _:
-                return GameCancelledResult(reason="Game engine crashed.")
+                return GameCrashedResult(reason="Game engine crashed.")
             
 
     def get_recording_json(self) -> str:
