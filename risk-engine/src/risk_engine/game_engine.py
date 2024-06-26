@@ -74,6 +74,14 @@ class GameEngine:
         with open(f"{CORE_DIRECTORY}/output/game.json", "w") as f:
             f.write(inspector.get_recording_json())
 
+        # Write the visualiser forward and backwards differential logs.
+        forwards_differential, backwards_differential = inspector.get_visualiser_forwards_backwards_differential_json()
+        with open(f"{CORE_DIRECTORY}/output/visualiser_forwards_differential.json", "w") as f:
+            f.write(forwards_differential)
+        
+        with open(f"{CORE_DIRECTORY}/output/visualiser_backwards_differential.json", "w") as f:
+            f.write(backwards_differential)
+
         def copy_stdout_stderr_player(player: int):
             stderr_path = f"{CORE_DIRECTORY}/submission{player}/io/submission.err"
             stderr_path_new = f"{CORE_DIRECTORY}/output/submission_{player}.err"
@@ -91,7 +99,6 @@ class GameEngine:
             except (FileNotFoundError, IsADirectoryError, FileExistsError):
                 with open(stdout_path_new, "w") as f:
                     f.write("Your submission.log file is either missing or is a directory.")
-
 
         # Only copy for the player who was banned, otherwise copy for all players, or only copy the log
         # if the match was cancelled.

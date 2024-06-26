@@ -193,7 +193,7 @@ class MoveValidator():
 
             is_matching_set = len(cards_by_symbol) == 1 and "Wildcard" not in cards_by_symbol
             is_one_of_each_set = len(cards_by_symbol) == 3 and "Wildcard" not in cards_by_symbol
-            is_wildcard_set = "Wildcard" in cards_by_symbol and cards_by_symbol["Wildcard"] == 1
+            is_wildcard_set = "Wildcard" in cards_by_symbol
             if not (is_matching_set or is_one_of_each_set or is_wildcard_set):
                 raise ValueError(f"You tried to redeem a set of cards {cards[0].symbol}, {cards[1].symbol}, {cards[2].symbol}, which is not a set.")
 

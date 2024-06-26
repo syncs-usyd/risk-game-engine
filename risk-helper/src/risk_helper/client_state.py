@@ -45,6 +45,8 @@ class ClientState():
                 return (_cards[0], _cards[1], _cards[2])
             elif len(_cards) == 2 and len(cards_by_symbol["Wildcard"]) >= 1:
                 return (_cards[0], _cards[1], cards_by_symbol["Wildcard"][0])
+            elif len(_cards) == 1 and len(cards_by_symbol["Wildcard"]) >= 2:
+                return (_cards[0], cards_by_symbol["Wildcard"][0], cards_by_symbol["Wildcard"][1])
 
 
     def get_territories_owned_by(self, player: Union[int, None]) -> list[int]:

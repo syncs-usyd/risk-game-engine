@@ -189,14 +189,17 @@ class StateMutator():
         self.state.territories[move_attack.defending_territory].troops += r.troop_count
 
 
-    def _commit_record_attack(self, x: RecordAttack) -> None:
-        move_attack_obj = cast(MoveAttack, self.state.recording[x.move_attack_id])
+    def _commit_record_attack(self, r: RecordAttack) -> None:
+        move_attack = cast(MoveAttack, self.state.recording[r.move_attack_id])
 
-        attacking_territory = move_attack_obj.attacking_territory
-        defending_territory = move_attack_obj.defending_territory
+        attacking_territory = move_attack.attacking_territory
+        defending_territory = move_attack.defending_territory
 
-        self.state.territories[attacking_territory].troops -= x.attacking_troops_lost
-        self.state.territories[defending_territory].troops -= x.defending_troops_lost
+        self.state.territories[attacking_territory].troops -= r.attacking_troops_lost
+        self.state.territories[defending_territory].troops -= r.defending_troops_lost
+
+        if r.territory_conquered:
+            self.state.territories[defending_territory].occupier = move_attack.move_by_player
 
 
     def _commit_record_banned(self, r: RecordBanned) -> None:
@@ -270,10 +273,4 @@ class StateMutator():
 
 
     def _commit_record_territory_conquered(self, r: RecordTerritoryConquered) -> None:
-        record_attack = cast(RecordAttack, self.state.recording[r.record_attack_id])
-        move_attack = cast(MoveAttack, self.state.recording[record_attack.move_attack_id])
-
-        defending_territory = move_attack.defending_territory
-
-        self.state.territories[defending_territory].troops = 0
-        self.state.territories[defending_territory].occupier = move_attack.move_by_player
+        pass
