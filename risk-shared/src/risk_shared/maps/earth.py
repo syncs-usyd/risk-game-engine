@@ -343,11 +343,8 @@ def create_map():
             vertices["IRKUTSK"],
         ],
         vertices["ARGENTINA"]: [
-            vertices["CHINA"],
-            vertices["URAL"],
-            vertices["UKRAINE"],
-            vertices["MIDDLE_EAST"],
-            vertices["INDIA"],
+            vertices["BRAZIL"],
+            vertices["PERU"],
         ],
         vertices["BRAZIL"]: [
             vertices["NORTH_AFRICA"],
