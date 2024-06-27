@@ -1,3 +1,4 @@
+import json
 import shutil
 from signal import SIGKILL
 import subprocess
@@ -86,6 +87,8 @@ def print_usage():
 def setup_environments(sources: list[Tuple[int, str]]):
     shutil.rmtree("output", ignore_errors=True)
     os.mkdir("output")
+    shutil.rmtree("input", ignore_errors=True)
+    os.mkdir("input")
 
     count = 0
     source = sources.pop(0)
@@ -98,6 +101,11 @@ def setup_environments(sources: list[Tuple[int, str]]):
         setup_environment_for_player(player, source[1])
 
         count += 1
+
+    catalog = [{ "team_id": i } for i in range(NUM_PLAYERS)]
+    with open(f"input/catalog.json", "w") as f:
+        f.write(json.dumps(catalog))
+
 
 
 def start_submissions() -> list[int]:

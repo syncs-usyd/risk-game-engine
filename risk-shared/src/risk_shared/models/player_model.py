@@ -4,6 +4,7 @@ from risk_shared.models.card_model import CardModel
 
 class PlayerModel(BaseModel):
     player_id: int
+    team_id: int
     troops_remaining: int
     alive: bool
     cards: list[CardModel]

@@ -132,6 +132,7 @@ class PlayerConnection():
 
         self._open_pipes()
 
+
     @time_limited("You didn't open 'to_engine' for writing or 'from_engine.pipe' for reading in time.")
     def _open_pipes(self):
         self._to_engine_pipe = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/to_engine.pipe", "r")
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     validator = MoveValidator(state)
     censor = CensorRecord(state)
     connection = PlayerConnection(player_id=0)
-    players = [PlayerModel(player_id=0, troops_remaining=25, alive=True, cards=[], must_place_territory_bonus=[])]
+    players = [PlayerModel(player_id=0, team_id=0, troops_remaining=25, alive=True, cards=[], must_place_territory_bonus=[])]
 
     turn_order = [x for x in range(5)]
     random.shuffle(turn_order)
