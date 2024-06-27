@@ -74,7 +74,7 @@ class MoveValidator():
         if self.state.territories[attacking_territory].occupier != player:
             raise ValueError(f"You don't occupy this territory.")
         
-        if self.state.territories[defending_territory] == player:
+        if self.state.territories[defending_territory].occupier == player:
             raise ValueError(f"You are attacking your own territory.")
         
         if not self.state.map.is_adjacent(defending_territory, attacking_territory):

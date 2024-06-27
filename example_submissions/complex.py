@@ -89,12 +89,18 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
     # We can only pick from territories that are unclaimed and adjacent to us.
     available = list(set(unclaimed_territories) & set(adjacent_territories))
-    if len(available) == 0:
-        selected_territory = random.sample(unclaimed_territories, 1)[0]
+    if len(available) != 0:
+
+        # We will pick the one with the most connections to our territories
+        # this should make our territories clustered together a little bit.
+        def count_adjacent_friendly(x: int) -> int:
+            return len(set(my_territories) & set(game.state.map.get_adjacent_to(x)))
+
+        selected_territory = sorted(available, key=lambda x: count_adjacent_friendly(x), reverse=True)[0]
     
-    # Or if there are no such territories, we will pick just an unclaimed one.
+    # Or if there are no such territories, we will pick just an unclaimed one with the greatest degree.
     else:
-        selected_territory = random.sample(unclaimed_territories, 1)[0]
+        selected_territory = sorted(unclaimed_territories, key=lambda x: len(game.state.map.get_adjacent_to(x)), reverse=True)[0]
 
     return game.move_claim_territory(query, selected_territory)
 
@@ -120,10 +126,8 @@ def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards
     """After the claiming and placing initial troops phases are over, you can redeem any
     cards you have at the start of each turn, or after killing another player."""
 
-    # We will always redeem the minimum card sets we can (to increase the card set bonus
-    # over the whole game). We could improve this by trying to redeem sets that give us
-    # the matching territory bonus, or by reducing our usage of wildcards or matching
-    # territory cards after we have already received the bonus for this turn.
+    # We will always redeem the minimum number of card sets we can until the 12th card set has been redeemed.
+    # This is just an arbitrary choice to try and save our cards for the late game.
 
     # We always have to redeem enough cards to reduce our card count below five.
     card_sets: list[Tuple[CardModel, CardModel, CardModel]] = []
@@ -135,9 +139,17 @@ def handle_redeem_cards(game: Game, bot_state: BotState, query: QueryRedeemCards
         # of cards if we have at least 5 cards.
         assert card_set != None
         card_sets.append(card_set)
-
         cards_remaining = [card for card in cards_remaining if card not in card_set]
-    
+
+    # Remember we can't redeem any more than the required number of card sets if 
+    # we have just eliminated a player.
+    if game.state.card_sets_redeemed > 12 and query.cause == "turn_started":
+        card_set = game.state.get_card_set(cards_remaining)
+        while card_set != None:
+            card_sets.append(card_set)
+            cards_remaining = [card for card in cards_remaining if card not in card_set]
+            card_set = game.state.get_card_set(cards_remaining)
+
     return game.move_redeem_cards(query, [(x[0].card_id, x[1].card_id, x[2].card_id) for x in card_sets])
 
 
@@ -161,27 +173,31 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
         distributions[game.state.me.must_place_territory_bonus[0]] += 2
         total_troops -= 2
 
-    # If we have an enemy, we will stack troops near if they neighbour us and we feel aggressive.
-    if bot_state.enemy != None and random.random() < 0.8:
-        enemy_territories = set(game.state.get_territories_owned_by(bot_state.enemy))
-        neighbouring_enemy = [territory for territory in border_territories if len(set(game.state.map.get_adjacent_to(territory)) & enemy_territories) != 0]
 
-        if len(neighbouring_enemy) != 0:
-            distributions[neighbouring_enemy[0]] += total_troops
-            return game.move_distribute_troops(query, distributions)
-        
-        # If our enemy is no longer neighbouring us, we forget about them
-        else:
-            bot_state.enemy = None
+    # We will equally distribute across border territories in the early game,
+    # but start doomstacking in the late game.
+    if len(game.state.recording) < 1000:
+        troops_per_territory = total_troops // len(border_territories)
+        leftover_troops = total_troops % len(border_territories)
+        for territory in border_territories:
+            distributions[territory] += troops_per_territory
+    
+        # The leftover troops will be put some territory (we don't care)
+        distributions[border_territories[0]] += leftover_troops
+    
+    else:
+        my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+        weakest_players = sorted(game.state.players.values(), key=lambda x: sum(
+            [game.state.territories[y].troops for y in game.state.get_territories_owned_by(x.player_id)]
+        ))
 
-    # Otherwise we will equally distribute across border territories.
-    troops_per_territory = total_troops // len(border_territories)
-    leftover_troops = total_troops % len(border_territories)
-    for territory in border_territories:
-        distributions[territory] += troops_per_territory
+        for player in weakest_players:
+            bordering_enemy_territories = set(game.state.get_all_adjacent_territories(my_territories)) & set(game.state.get_territories_owned_by(player.player_id))
+            if len(bordering_enemy_territories) > 0:
+                selected_territory = list(set(game.state.map.get_adjacent_to(list(bordering_enemy_territories)[0])) & set(my_territories))[0]
+                distributions[selected_territory] += total_troops
+                break
 
-    # The leftover troops will be put some territory (we don't care)
-    distributions[border_territories[0]] += leftover_troops
 
     return game.move_distribute_troops(query, distributions)
 
@@ -199,41 +215,51 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
         # We will attack the weakest territory from the list.
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
         for candidate_target in territories:
-            candidate_attackers = list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories))
+            candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
                 if game.state.territories[candidate_attacker].troops > 1:
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
 
-    # We will check if anyone attacked us in the last round.
-    new_records = game.state.recording[game.state.new_records:]
-    enemy = None
-    for record in new_records:
-        match record:
-            case MoveAttack() as r:
-                if r.defending_territory in set(my_territories):
-                    enemy = r.move_by_player
+    if len(game.state.recording) < 1000:
+        # We will check if anyone attacked us in the last round.
+        new_records = game.state.recording[game.state.new_records:]
+        enemy = None
+        for record in new_records:
+            match record:
+                case MoveAttack() as r:
+                    if r.defending_territory in set(my_territories):
+                        enemy = r.move_by_player
 
-    # If we don't have an enemy yet, or we feel angry, this player will become our enemy.
-    if enemy != None:
-        if bot_state.enemy == None or random.random() < 0.05:
-            bot_state.enemy = enemy
-    
-    # If we have no enemy, we will pick the player with the weakest territory bordering us, and make them our enemy.
-    else:
-        weakest_territory = min(bordering_territories, key=lambda x: game.state.territories[x].troops)
-        bot_state.enemy = game.state.territories[weakest_territory].occupier
+        # If we don't have an enemy yet, or we feel angry, this player will become our enemy.
+        if enemy != None:
+            if bot_state.enemy == None or random.random() < 0.05:
+                bot_state.enemy = enemy
         
-    # We will attack their weakest territory that gives us a favourable battle if possible.
-    enemy_territories = list(set(bordering_territories) & set(game.state.get_territories_owned_by(enemy)))
-    move = attack_weakest(enemy_territories)
-    if move != None:
-        return move
+        # If we have no enemy, we will pick the player with the weakest territory bordering us, and make them our enemy.
+        else:
+            weakest_territory = min(bordering_territories, key=lambda x: game.state.territories[x].troops)
+            bot_state.enemy = game.state.territories[weakest_territory].occupier
+            
+        # We will attack their weakest territory that gives us a favourable battle if possible.
+        enemy_territories = list(set(bordering_territories) & set(game.state.get_territories_owned_by(enemy)))
+        move = attack_weakest(enemy_territories)
+        if move != None:
+            return move
+        
+        # Otherwise we will attack anyone most of the time.
+        if random.random() < 0.8:
+            move = attack_weakest(bordering_territories)
+            if move != None:
+                return move
 
-    # Otherwise we will attack anyone.
-    move = attack_weakest(bordering_territories)
-    if move != None:
-        return move
+    # In the late game, we will attack anyone adjacent to our strongest territories (hopefully our doomstack).
+    else:
+        strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=True)
+        for territory in strongest_territories:
+            move = attack_weakest(game.state.get_all_adjacent_territories([territory]))
+            if move != None:
+                return move
 
     return game.move_attack_pass(query)
 
