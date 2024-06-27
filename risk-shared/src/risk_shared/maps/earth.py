@@ -224,7 +224,7 @@ def create_map():
             vertices["NORTHERN_EUROPE"],
             vertices["SCANDINAVIA"],
             vertices["ICELAND"],
-            vertices["GREAT_BRITAIN"],
+            vertices["WESTERN_EUROPE"],
         ],
         vertices["ICELAND"]: [
             vertices["SCANDINAVIA"],
@@ -264,7 +264,7 @@ def create_map():
             vertices["SOUTHERN_EUROPE"],
             vertices["NORTHERN_EUROPE"],
             vertices["GREAT_BRITAIN"],
-            vertices["WESTERN_EUROPE"],
+            vertices["NORTH_AFRICA"],
         ],
         vertices["AFGHANISTAN"]: [
             vertices["CHINA"],

@@ -26,3 +26,18 @@ class Map():
     
     def is_adjacent(self, v1: int, v2: int):
         return v2 in self._edges[v1]
+    
+    def _check_graph_validity(self):
+        for vertex, edges in self._edges.items():
+            for edge in edges:
+                if not vertex in self._edges[edge]:
+                    print(self._vertex_names[vertex], "->", self._vertex_names[edge], "no backwards edge")
+                
+                if vertex == edge:
+                    print(self._vertex_names[vertex], "->", self._vertex_names[edge], "self loop detected")
+
+
+if __name__ == "__main__":
+    from risk_shared.maps.earth import create_map
+    earth = create_map()
+    earth._check_graph_validity()

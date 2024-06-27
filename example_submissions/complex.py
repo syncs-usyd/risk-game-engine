@@ -194,6 +194,9 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
         for player in weakest_players:
             bordering_enemy_territories = set(game.state.get_all_adjacent_territories(my_territories)) & set(game.state.get_territories_owned_by(player.player_id))
             if len(bordering_enemy_territories) > 0:
+                print("my territories", [game.state.map.get_vertex_name(x) for x in my_territories])
+                print("bordering enemies", [game.state.map.get_vertex_name(x) for x in bordering_enemy_territories])
+                print("adjacent to target", [game.state.map.get_vertex_name(x) for x in game.state.map.get_adjacent_to(list(bordering_enemy_territories)[0])])
                 selected_territory = list(set(game.state.map.get_adjacent_to(list(bordering_enemy_territories)[0])) & set(my_territories))[0]
                 distributions[selected_territory] += total_troops
                 break
@@ -257,7 +260,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
     else:
         strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=True)
         for territory in strongest_territories:
-            move = attack_weakest(game.state.get_all_adjacent_territories([territory]))
+            move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
             if move != None:
                 return move
 
