@@ -176,7 +176,7 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 
     # We will equally distribute across border territories in the early game,
     # but start doomstacking in the late game.
-    if len(game.state.recording) < 1000:
+    if len(game.state.recording) < 4000:
         troops_per_territory = total_troops // len(border_territories)
         leftover_troops = total_troops % len(border_territories)
         for territory in border_territories:
@@ -224,7 +224,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[
                     return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
 
 
-    if len(game.state.recording) < 1000:
+    if len(game.state.recording) < 4000:
         # We will check if anyone attacked us in the last round.
         new_records = game.state.recording[game.state.new_records:]
         enemy = None
