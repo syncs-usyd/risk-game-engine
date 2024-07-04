@@ -95,7 +95,7 @@ def setup_environments(sources: list[Tuple[int, str]]):
     for player in range(NUM_PLAYERS):
         if count >= source[0]:
             count = 0
-            source = sources.pop()
+            source = sources.pop(0)
 
         clean_environment_for_player(player)
         setup_environment_for_player(player, source[1])
