@@ -1,11 +1,14 @@
 import math
 
-from pydantic import TypeAdapter
+from pydantic import Field, RootModel, TypeAdapter
 from risk_shared.queries.query_type import QueryType
 from risk_shared.records.types.move_type import MoveType
 
 MAX_CHARACTERS_READ = 1000000
 READ_CHUNK_SIZE = 1024
+
+class DiscriminatedTypeAdapter(RootModel):
+    root: QueryType = Field(discriminator="query_type")
 
 class Connection():
 
@@ -45,7 +48,7 @@ class Connection():
     
 
     def get_next_query(self) -> QueryType:
-        return TypeAdapter(QueryType).validate_json(self._receive())
+        return DiscriminatedTypeAdapter.model_validate_json(self._receive()).root
 
 
     def send_move(self, move: MoveType):

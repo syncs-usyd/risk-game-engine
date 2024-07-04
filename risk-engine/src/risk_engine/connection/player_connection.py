@@ -1,4 +1,5 @@
 from io import TextIOWrapper
+import itertools
 import json
 import math
 import random
@@ -38,6 +39,9 @@ from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_fortify import MoveFortify
 from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.record_start_game import RecordStartGame
+
+# Performance boost on deserializing unions.
+cached_type_adapters: dict[frozenset[str], TypeAdapter] = {}
 
 
 class InvalidMoveError(ValueError):
@@ -188,7 +192,13 @@ class PlayerConnection():
     def _query_move_union(self, query: QueryType, response_type_1: Type[T2], response_type_2: Type[T3], validator: MoveValidator) -> Union[T2, T3]:
         self._send(query.model_dump_json())
 
-        adapter = TypeAdapter(Union[response_type_1, response_type_2])
+        types = frozenset([response_type_1.__name__, response_type_2.__name__])
+        if types in cached_type_adapters:
+            adapter = cached_type_adapters[types]
+        else:
+            cached_type_adapters[types] = TypeAdapter(Union[response_type_1, response_type_2])
+            adapter = cached_type_adapters[types]
+        
         move = adapter.validate_json(self._receive())
         try:
             validator.validate(move, query, self.player_id)
@@ -200,7 +210,7 @@ class PlayerConnection():
     def _get_record_update_dict(self, state: EngineState, censor: CensorRecord):
         if self._record_update_watermark >= len(state.recording):
             raise RuntimeError("Record update watermark out of sync with state, did you try to send two queries without committing the first?")
-        result = dict([(i, censor.censor(x, self.player_id)) for i, x in list(enumerate(state.recording))[self._record_update_watermark:]])
+        result = dict([(i, censor.censor(x, self.player_id)) for i, x in itertools.islice(enumerate(state.recording), self._record_update_watermark, None)])
         self._record_update_watermark = len(state.recording)
         return result
 
@@ -257,7 +267,6 @@ if __name__ == "__main__":
     random.shuffle(turn_order)
     record_turn_order = RecordStartGame(turn_order=turn_order, players=players)
     mutator.commit(record_turn_order)
-
 
     try:
         response = connection.query_claim_territory(state, validator, censor)

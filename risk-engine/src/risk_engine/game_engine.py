@@ -208,6 +208,11 @@ class GameEngine:
         abort_early = False
         while (True):
 
+            # Abort early if game just finished.
+            if len(self.state.recording) > MAX_GAME_RECORDING_SIZE:
+                abort_early = True
+                break
+
             # Get the attack move.
             attack = connection.query_attack(self.state, self.validator, self.censor)
             self.mutator.commit(attack)
@@ -247,7 +252,6 @@ class GameEngine:
                 if len(list(filter(lambda x: x.alive == True, self.state.players.values()))) == 1:
                     abort_early = True
                     break
-
 
             # If a territory was conquered, the attacking player can move troops.
             if record_attack.territory_conquered:
