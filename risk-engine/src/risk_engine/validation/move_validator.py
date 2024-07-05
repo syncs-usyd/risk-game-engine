@@ -134,7 +134,7 @@ class MoveValidator():
         matching_territories = self.state.players[player].must_place_territory_bonus
         if len(matching_territories) > 0:
             for territory in matching_territories:
-                if r.distributions[territory] >= 2:
+                if territory in r.distributions and r.distributions[territory] >= 2:
                     break
             else:
                 raise ValueError(f"You must distribute your matching territory bonus to a matching territory from your previous card redemption, at least 2 troops must be placed on a matching territory.\n Your matching territories are {matching_territories}.")
