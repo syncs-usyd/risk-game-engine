@@ -124,8 +124,8 @@ class MoveValidator():
             
             if self.state.territories[territory].occupier != player:
                 raise ValueError(f"You don't occupy the territory with id {territory}.")  
-            
-        if sum(r.distributions.values()) != self.state.players[player].troops_remaining:
+        
+        if sum(map(lambda x: max(x, 0), r.distributions.values())) != self.state.players[player].troops_remaining:
             raise ValueError(f"You must distribute exactly your remaining {self.state.players[player].troops_remaining} troops.")
         
         if r.cause != query.cause:
@@ -152,10 +152,6 @@ class MoveValidator():
 
         if self.state.territories[r.target_territory].occupier != player:
             raise ValueError(f"You don't occupy the target territory.")
-        
-        # The player can pass their turn by moving zero troops from one territory to itself.
-        if r.troop_count == 0 and r.source_territory == r.target_territory:
-            return
 
         if not self.state.map.is_adjacent(r.source_territory, r.target_territory):
             raise ValueError(f"Your target territory {r.target_territory} is not adjacent to your source territory {r.source_territory}.")
