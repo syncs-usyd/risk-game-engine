@@ -82,7 +82,6 @@ class StateMutator():
             case _:
                 raise NotImplementedError
             
-        self._update_public_player_model_to_me()
 
     
     def _update_public_player_model_to_me(self) -> None:
@@ -108,6 +107,9 @@ class StateMutator():
         claimed_territory.troops = 1
         player.troops_remaining -= 1
 
+        if r.move_by_player == self.state.me.player_id:
+            self.state.me.troops_remaining = player.troops_remaining
+
 
     def _commit_move_defend(self, r: MoveDefend) -> None:
         pass
@@ -126,6 +128,10 @@ class StateMutator():
         for territory, troops in r.distributions.items():
             self.state.territories[territory].troops += troops
 
+        if r.move_by_player == self.state.me.player_id:
+            self.state.me.troops_remaining = player.troops_remaining
+            self.state.me.must_place_territory_bonus = player.must_place_territory_bonus
+
 
     def _commit_move_fortify(self, r: MoveFortify) -> None:
         self.state.territories[r.source_territory].troops -= r.troop_count
@@ -139,6 +145,9 @@ class StateMutator():
     def _commit_move_place_initial_troop(self, r: MovePlaceInitialTroop) -> None:
         self.state.territories[r.territory].troops += 1
         self.state.players[r.move_by_player].troops_remaining -= 1
+
+        if r.move_by_player == self.state.me.player_id:
+            self.state.me.troops_remaining = self.state.players[r.move_by_player].troops_remaining
 
 
     def _commit_move_redeem_cards(self, r: MoveRedeemCards) -> None:
@@ -167,16 +176,22 @@ class StateMutator():
         matching_territory_bonus = 2 if len(matching_territories) > 0 else 0
 
         # Modify the player.
-        self.state.players[r.move_by_player].troops_remaining += total_set_bonus + matching_territory_bonus
-        self.state.players[r.move_by_player].must_place_territory_bonus = list(matching_territories)
+        player = self.state.players[r.move_by_player]
+        player.troops_remaining += total_set_bonus + matching_territory_bonus
+        player.must_place_territory_bonus = list(matching_territories)
         
         if r.move_by_player == self.state.me.player_id:
             self.state.me.cards = list(filter(lambda x: x.card_id not in set(all_cards), self.state.me.cards))
         else:
-            self.state.players[r.move_by_player].card_count -= len(all_cards)
+            player.card_count -= len(all_cards)
 
         # Place the redeemed cards in the discarded deck.
         self.state.discarded_deck.extend([self.state.cards[i] for i in all_cards])
+        
+        # Update my model if this was me.
+        if r.move_by_player == self.state.me.player_id:
+            self.state.me.troops_remaining = player.troops_remaining
+            self.state.me.must_place_territory_bonus = player.must_place_territory_bonus
 
 
     def _commit_move_troops_after_attack(self, r: MoveTroopsAfterAttack) -> None:
@@ -247,6 +262,9 @@ class StateMutator():
             raise RuntimeError("Please send us a discord message with this error log.")
         
         self.state.players[move_attack.move_by_player].card_count += r.cards_surrendered_count
+        
+        if r.player == self.state.me.player_id:
+            raise RuntimeError("Please send us a discord message with this error log.")
 
 
     def _commit_record_redeemed_cards(self, r: RecordRedeemedCards) -> None:
@@ -270,6 +288,9 @@ class StateMutator():
 
     def _commit_record_start_turn(self, r: RecordStartTurn) -> None:
         self.state.players[r.player].troops_remaining += r.territory_bonus + r.continent_bonus
+
+        if r.player == self.state.me.player_id:
+            self.state.me.troops_remaining = self.state.players[r.player].troops_remaining
 
 
     def _commit_record_territory_conquered(self, r: RecordTerritoryConquered) -> None:

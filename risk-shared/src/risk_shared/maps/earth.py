@@ -157,6 +157,15 @@ def create_map():
             ],
     }
 
+    continent_names = {
+        0: "NORTH_AMERICA",
+        1: "EUROPE",
+        2: "ASIA",
+        3: "SOUTH_AMERICA",
+        4: "AFRICA",
+        5: "AUSTRALIA"
+    }
+
     continent_bonuses = {
         0 : 5,
         1 : 5,
@@ -419,4 +428,4 @@ def create_map():
         ],
     }
 
-    return Map(vertices=vertices, edges=edges, continents=continents, continent_bonuses=continent_bonuses)
+    return Map(vertices=vertices, edges=edges, continents=continents, continent_names=continent_names, continent_bonuses=continent_bonuses)
