@@ -125,7 +125,10 @@ class MoveValidator():
             if self.state.territories[territory].occupier != player:
                 raise ValueError(f"You don't occupy the territory with id {territory}.")  
         
-        if sum(map(lambda x: max(x, 0), r.distributions.values())) != self.state.players[player].troops_remaining:
+        if any(map(lambda x: x <= 0, r.distributions.values())):
+            raise ValueError(f"You cannot distribute negative troops.")
+
+        if sum(r.distributions.values()) != self.state.players[player].troops_remaining:
             raise ValueError(f"You must distribute exactly your remaining {self.state.players[player].troops_remaining} troops.")
         
         if r.cause != query.cause:
