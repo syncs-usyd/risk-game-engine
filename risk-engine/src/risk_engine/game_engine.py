@@ -245,7 +245,7 @@ class GameEngine:
 
             # Emit a RecordPlayerEliminated
             if record_attack.defender_eliminated:
-                record = record_player_eliminated_factory(self.state, move_defend_id, defending_player)
+                record = record_player_eliminated_factory(self.state, record_attack_id, defending_player)
                 self.mutator.commit(record)
 
                 # Abort early if game just finished.
