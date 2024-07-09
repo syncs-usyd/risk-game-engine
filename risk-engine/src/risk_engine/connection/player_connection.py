@@ -12,7 +12,7 @@ from risk_engine.game.state_mutator import StateMutator
 from risk_engine.validation.move_validator import MoveValidator
 from pydantic import TypeAdapter, ValidationError
 
-from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, READ_CHUNK_SIZE, TIMEOUT_SECONDS
+from risk_engine.config.ioconfig import CORE_DIRECTORY, CUMULATIVE_TIMEOUT_SECONDS, MAX_CHARACTERS_READ, OPEN_PIPE_TIMEOUT_SECONDS, READ_CHUNK_SIZE, TIMEOUT_SECONDS
 from risk_engine.exceptions import BrokenPipeException, CumulativeTimeoutException, InvalidMoveException, PlayerException, InvalidMessageException, TimeoutException
 from risk_engine.game.engine_state import EngineState
 from risk_shared.models.player_model import PlayerModel
@@ -88,7 +88,7 @@ def handle_invalid(fn: Callable[P, T1]) -> Callable[P, T1]:
     return dfn
     
 
-def time_limited(error_message: str = "You took too long to respond."):
+def time_limited(error_message: str = "You took too long to respond.", initial=False):
     """Decorator to trigger ban if the player takes too long to respond.
     """
 
@@ -103,7 +103,7 @@ def time_limited(error_message: str = "You took too long to respond."):
                 raise TimeoutException(self.player_id, error_message, query)
             signal(SIGALRM, on_timeout_alarm)
 
-            alarm(TIMEOUT_SECONDS)
+            alarm(OPEN_PIPE_TIMEOUT_SECONDS if initial else TIMEOUT_SECONDS)
             start = time()
 
             result = fn(*args, **kwargs)
@@ -137,7 +137,7 @@ class PlayerConnection():
         self._open_pipes()
 
 
-    @time_limited("You didn't open 'to_engine' for writing or 'from_engine.pipe' for reading in time.")
+    @time_limited("You didn't open 'to_engine' for writing or 'from_engine.pipe' for reading in time.", initial=True)
     def _open_pipes(self):
         self._to_engine_pipe = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/to_engine.pipe", "r")
         self._from_engine_pipe = open(f"{CORE_DIRECTORY}/submission{self.player_id}/io/from_engine.pipe", "w")
